@@ -5,12 +5,14 @@
 * prompt + function calling
 * 后续可通过RAG增强巡检部份功能，支持特定业务巡检
 # 目前适配模型
-| 模型       | 是否支持 |
-|----------|------|
-| 阿里千文plus | ✅    |
-| 阿里千文max    | ✅    |
-| 阿里千文turbo | ✅    |
-| 腾讯混元     | ✅    |
+| 模型          | 是否支持 |
+|-------------|------|
+| 阿里千文plus    | ✅    |
+| 阿里千文max     | ✅    |
+| 阿里千文turbo   | ✅    |
+| 腾讯混元        | ✅    |
+| ChatGPT-4o  | ✅    |
+| ChatGPT-4.5 | ✅    |
 # 目前支持巡检项目
 ```text
     - CPU负载
@@ -25,5 +27,5 @@
 # 使用效果如下
 [![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
 # 后续演进方向
-Multi-agent，多智能体协作  
+Multi-agent，多智能体协作
 ![示例图片](img/1742663323334.jpg)
