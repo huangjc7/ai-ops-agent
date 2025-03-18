@@ -64,14 +64,15 @@ func JsonAndExecCommandResponse(command string, sender model.Sender) {
 	}
 	fmt.Println("执行命令: ", response)
 
-	// 如果 AI 说 "结束" 或 "完成"，则直接退出
+	// 如果 AI 说 "结束" 则进行修复阶段
 	if response.Step == "结束" {
 		fmt.Println("✅ AI 诊断已结束")
 		fmt.Println("🧰 开始进入修复阶段")
+		// 提取最后总结的异常项字段
 		result := matchErrorText(response.Command)
 		for index, v := range result {
 			fmt.Printf("第%d次修复\n", index+1)
-			model.ChatHistory = []openai.ChatCompletionMessage{} //重置一下上下文 防止上下文溢出 只保留最后总结
+			model.ChatHistory = []openai.ChatCompletionMessage{} // 重置一下上下文 防止上下文溢出 只保留最后总结
 			model.ChatHistory = append(model.ChatHistory, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleUser,
 				Content: v,

@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 
 		// 初始化出 AI client
 		client := model.NewAIClient(&model.ConfigClient{
-			ApiKey:  "xxx",
+			ApiKey:  os.Getenv("AI_API_KEY"),
 			BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/",
 			Model:   "qwen-plus",
 		})
@@ -45,11 +45,9 @@ var rootCmd = &cobra.Command{
 		for i := 1; i <= maxStep; i++ {
 			// 更新进度条（未知总步数）
 			bar.Add(1)
-			// 解析json并且执行获取返回结果
-			//fmt.Println("当前index ->", len(model.ChatHistory))
-			// 发送消息给AI
+			// 开始询问AI
 			client.Send()
-			//fmt.Println("✅ 执行命令", model.ChatHistory[len(model.ChatHistory)-1].Content)
+			// 解析AI回答并执行命令
 			agent.JsonAndExecCommandResponse(model.ChatHistory[len(model.ChatHistory)-1].Content, client)
 		}
 		fmt.Println("\n⚠️ AI 运维分析超过最大步骤")

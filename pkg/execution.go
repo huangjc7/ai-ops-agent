@@ -22,6 +22,5 @@ func ExecuteCommand(cmd string) string {
 	out.Run()
 
 	// 返回完整输出
-	//fmt.Println("✅ 命令执行完成，结果:\n", result)
 	return outputBuffer.String()
 }
