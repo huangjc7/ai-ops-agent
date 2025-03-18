@@ -1,6 +1,8 @@
 # AI运维助手
 * 自动巡检并处理异常问题
 * 最小可行验证方式，仅提供思路，代码部份边界约束条件较不完善
+# 使用效果如下
+[![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
 # 实现方式
 * prompt + function calling
 * 后续可通过RAG增强巡检部份功能，支持特定业务巡检
@@ -24,8 +26,6 @@
     - Docker进程
     - Docker服务运行状态
 ```
-# 使用效果如下
-[![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
 # 后续演进方向
 Multi-agent，多智能体协作
 ![示例图片](img/1742663323334.jpg)
