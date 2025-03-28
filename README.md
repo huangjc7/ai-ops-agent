@@ -3,6 +3,8 @@
 * 最小可行验证方式，仅提供思路，代码部份边界约束条件较不完善，可尝试玩一玩
 # 使用方式
 ```shell
+  curl -o ./ai-ops-agent https://github.com/huangjc7/ai-ops-agent/releases/download/v1.0.1/ai-ops-agent-arm64 # 注意区分架构版本
+  chmod +x ./ai-ops-agent
   ./ai-ops-agent --url="https://dashscope.aliyuncs.com/compatible-mode/v1/" \
   --model="qwen-plus" \
   --apikey="sk-8f058cb17awqdkadsd0ada4233be"
