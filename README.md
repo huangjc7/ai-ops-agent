@@ -3,7 +3,8 @@
 * 最小可行验证方式，仅提供思路，代码部份边界约束条件较不完善，可尝试玩一玩
 # 使用方式
 ```shell
-$ curl -o ./ai-ops-agent https://github.com/huangjc7/ai-ops-agent/releases/download/v1.0.1/ai-ops-agent-arm64 # 注意区分架构版本
+# 注意区分架构版本
+$ curl -o ./ai-ops-agent https://github.com/huangjc7/ai-ops-agent/releases/download/v1.0.1/ai-ops-agent-arm64
 $ chmod +x ./ai-ops-agent
 $ ./ai-ops-agent --url="https://dashscope.aliyuncs.com/compatible-mode/v1/" \
   --model="qwen-plus" \
@@ -30,9 +31,9 @@ make build-amd64 # 编译Linux系统amd64架构
 | ChatGPT-4.5 | ✅    |
 # 目前支持巡检项目
 ```text
-    - CPU负载           # 处理逻辑：打印前10个CPU占用过高进程
-    - 网络联通性         # 处理逻辑：打印丢包率
-    - 磁盘空间           # 处理逻辑：打印前10个CPU占用过高进程
+    - CPU负载
+    - 网络联通性
+    - 磁盘空间
     - 内存使用
     - SSH服务状态
     - 网络监听端口
