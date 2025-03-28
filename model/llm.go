@@ -1,37 +1,16 @@
 package model
 
 import (
+	"ai-ops-agent/pkg/tools"
 	"context"
-	"encoding/json"
 	"fmt"
 	openai "github.com/sashabaranov/go-openai"
-	"os/exec"
 )
 
 // 最大对话历史长度，防止 Token 超限
 const maxHistory = 5
 
 var ChatHistory []openai.ChatCompletionMessage
-
-// 支持的工具（Tools，替代 Functions）
-var availableTools = []openai.Tool{
-	{
-		Type: openai.ToolTypeFunction,
-		Function: &openai.FunctionDefinition{
-			Name:        "fixDiskIssue",
-			Description: "用于在检测到磁盘问题时执行修复或清理操作。仅在明确提示磁盘相关错误的情况下使用",
-			Parameters:  map[string]interface{}{},
-		},
-	},
-	{
-		Type: openai.ToolTypeFunction,
-		Function: &openai.FunctionDefinition{
-			Name:        "fixDockerService",
-			Description: "用于Docker服务停止或异常时执行修复操作，仅在明确提示Docker相关错误的情况下使用",
-			Parameters:  map[string]interface{}{},
-		},
-	},
-}
 
 type ConfigClient struct {
 	ApiKey  string
@@ -58,7 +37,7 @@ func NewAIClient(cfg *ConfigClient) Sender {
 	return &HunYuan{client: client, model: cfg.Model}
 }
 
-// 智能裁剪对话历史，防止 Token 超限
+// ChatHistory 智能裁剪对话历史，防止 Token 超限
 func trimChatHistory(history []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
 	maxAssistantCount := maxHistory
 	// 统计 Role=assistant 的总数量
@@ -106,52 +85,7 @@ func trimChatHistory(history []openai.ChatCompletionMessage) []openai.ChatComple
 	return trimmedHistory
 }
 
-// 模拟服务器巡检
-func fixDockerService(args json.RawMessage) (string, error) {
-
-	err := exec.Command("systemctl", "start", "docker").Run()
-	systemStatus := map[string]string{
-		"status_name": "Docker",
-		"status":      "已修复",
-	}
-	if err != nil {
-		systemStatus = map[string]string{
-			"status_name": "Docker",
-			"status":      "启动失败",
-		}
-
-	}
-	// 转换为 JSON
-	statusJSON, _ := json.Marshal(systemStatus)
-	return string(statusJSON), nil
-}
-
-// 模拟问题修复（仅清理磁盘，不执行其他操作）
-func fixDiskIssue(args json.RawMessage) (string, error) {
-
-	// 真正执行逻辑
-	cmd := exec.Command("find", "/", "-type", "f", "-size", "+1G", "-name", "*log*", "-exec", "bash", "-c", "> {}", ";")
-	err := cmd.Run()
-
-	// 模拟日志输出
-	fixResult := map[string]string{
-		"action":  "清理磁盘",
-		"result":  "已释放 10GB 空间",
-		"success": "true",
-	}
-	if err != nil {
-		fixResult = map[string]string{
-			"action":  "清理磁盘",
-			"result":  "清理磁盘失败",
-			"success": "false",
-		}
-	}
-	resultJSON, _ := json.Marshal(fixResult)
-
-	return string(resultJSON), nil
-}
-
-// Send 发送用户请求
+// Send 提供基本对话能力
 func (hy *HunYuan) Send() {
 
 	//裁剪对话历史
@@ -176,6 +110,7 @@ func (hy *HunYuan) Send() {
 
 }
 
+// SupportSend 提供修复能力
 func (hy *HunYuan) SupportSend() {
 
 	// 发送请求，使用 Tools
@@ -195,20 +130,34 @@ func (hy *HunYuan) SupportSend() {
 			fmt.Println("🔧 AI 需要调用 Tool:", resp.Choices[0].Message.ToolCalls[0].Function.Name)
 
 			// 解析 Tool 参数
-			var params json.RawMessage = []byte(resp.Choices[0].Message.ToolCalls[0].Function.Arguments)
+			//var params json.RawMessage = []byte(resp.Choices[0].Message.ToolCalls[0].Function.Arguments)
 
 			// 执行对应的 Tool（Function）
 			var functionResult string
 			switch resp.Choices[0].Message.ToolCalls[0].Function.Name {
-			case "fixDockerService":
-				result, err := fixDockerService(params)
+			case "FixDockerService":
+				result, err := tools.FixDockerService()
 				if err != nil {
 					fmt.Println("❌ Tool 执行失败:", err)
 					return
 				}
 				functionResult = result
-			case "fixDiskIssue":
-				result, err := fixDiskIssue(params)
+			case "FixDiskIssue":
+				result, err := tools.FixDiskIssue()
+				if err != nil {
+					fmt.Println("❌ Tool 执行失败:", err)
+					return
+				}
+				functionResult = result
+			case "GetTopMemoryProcesses":
+				result, err := tools.GetTopMemoryProcesses()
+				if err != nil {
+					fmt.Println("❌ Tool 执行失败:", err)
+					return
+				}
+				functionResult = result
+			case "GetTopCpuProcesses":
+				result, err := tools.GetTopCpuProcesses()
 				if err != nil {
 					fmt.Println("❌ Tool 执行失败:", err)
 					return

@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"ai-ops-agent/agent/model"
+	"ai-ops-agent/model"
 	"ai-ops-agent/pkg"
 	"bufio"
 	"encoding/json"
@@ -67,15 +67,22 @@ func JsonAndExecCommandResponse(command string, sender model.Sender) {
 	// 如果 AI 说 "结束" 则进行修复阶段
 	if response.Step == "结束" {
 		fmt.Println("✅ AI 诊断已结束")
-		fmt.Println("🧰 开始进入修复阶段")
+
 		// 提取最后总结的异常项字段
-		result := matchErrorText(response.Command)
-		for index, v := range result {
+		results := matchErrorText(response.Command)
+		if len(results) == 0 {
+			fmt.Println("🎉 恭喜! 主机没有任何异常值")
+			os.Exit(0)
+		}
+		fmt.Println("🧰 开始进入修复阶段")
+
+		for index, content := range results {
 			fmt.Printf("第%d次修复\n", index+1)
 			model.ChatHistory = []openai.ChatCompletionMessage{} // 重置一下上下文 防止上下文溢出 只保留最后总结
+
 			model.ChatHistory = append(model.ChatHistory, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleUser,
-				Content: v,
+				Content: content,
 			})
 			sender.SupportSend()
 
@@ -102,7 +109,7 @@ func matchErrorText(text string) []string {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, "异常值") || strings.Contains(line, "总结") {
+		if strings.Contains(line, "异常值") {
 			collecting = true
 			continue
 		}
