@@ -11,9 +11,7 @@ $ ./ai-ops-agent --url="https://dashscope.aliyuncs.com/compatible-mode/v1/" \
   --apikey="sk-8f058cb17awqdkadsd0ada4233be"
 ```
 # 使用效果 - V2版本 (需要代码开源可issues留言)
-<video src="./video/demo-v2.mp4" width="640" height="360" controls>
-  你的浏览器不支持 video 标签。
-</video>
+[!演示](./video/demo-v2.gif)
 
 # 使用效果 - V1版本
 [![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
