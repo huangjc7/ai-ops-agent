@@ -77,6 +77,7 @@ func JsonAndExecCommandResponse(command string, sender model.Sender) {
 		fmt.Println("🧰 开始进入修复阶段")
 
 		for index, content := range results {
+			fmt.Printf("异常值-%d: %s\n", index, content)
 			fmt.Printf("第%d次修复\n", index+1)
 			model.ChatHistory = []openai.ChatCompletionMessage{} // 重置一下上下文 防止上下文溢出 只保留最后总结
 
