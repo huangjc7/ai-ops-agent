@@ -11,7 +11,7 @@ $ ./ai-ops-agent --url="https://dashscope.aliyuncs.com/compatible-mode/v1/" \
   --apikey="sk-8f058cb17awqdkadsd0ada4233be"
 ```
 # 使用效果 - V2版本 (需要代码开源可issues留言)
-![演示](./video/demo-v2.gif)
+![演示](./video/demo-ultra.gif)
 
 # 使用效果 - V1版本
 [![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
