@@ -11,9 +11,10 @@ $ ./ai-ops-agent --url="https://dashscope.aliyuncs.com/compatible-mode/v1/" \
   --apikey="sk-8f058cb17awqdkadsd0ada4233be"
 ```
 
-# 使用效果 - V2版本 (暂未有空整理代码，需要代码开源可issues留言)
+# 使用效果演示 - V2版本 (暂未有空整理代码，需要代码开源可issues留言)
 [![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
-# 使用效果 - V1版本
+
+# 使用效果演示 - V1版本
 [![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
 # 实现方式
 * prompt + function calling
