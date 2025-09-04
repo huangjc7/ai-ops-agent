@@ -10,28 +10,29 @@ $ ./ai-ops-agent --url="https://dashscope.aliyuncs.com/compatible-mode/v1/" \
   --model="qwen-plus" \
   --apikey="sk-8f058cb17awqdkadsd0ada4233be"
 ```
-# 使用效果 - V2版本 (需要代码开源可issues留言)
-![演示](./video/demo-ultra.gif)
 
+# 使用效果 - V2版本 (暂未有空整理代码，需要代码开源可issues留言)
+[![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
 # 使用效果 - V1版本
 [![asciicast](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr.svg)](https://asciinema.org/a/Ht6kxUK5r8WeeHWNYRmsEezrr)
 # 实现方式
 * prompt + function calling
 * 后续可通过RAG增强巡检部份功能，支持特定业务巡检
 # 编译方式
+
 ```shell
 make build-arm64 # 编译Linux系统arm64架构
 make build-amd64 # 编译Linux系统amd64架构
 ```
 # 目前适配模型
-| 模型        | 是否支持 |
-|-----------|------|
-| 阿里千问plus  | ✅    |
+| 模型         | 是否支持 |
+|------------|------|
+| 阿里千问plus   | ✅    |
 | 阿里千问max    | ✅    |
 | 阿里千问turbo  | ✅    |
-| 腾讯混元      | ✅    |
+| 腾讯混元       | ✅    |
 | ChatGPT-4o | ✅    |
-| ChatGPT-4.5 | ✅    |
+| ChatGPT-5  | ✅    |
 # 目前支持巡检项目
 ```text
     - CPU负载
