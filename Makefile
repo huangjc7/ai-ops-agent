@@ -1,29 +1,34 @@
-# 默认目标
-.PHONY: all build-arm64 build-amd64 clean
+# Makefile
 
-# 输出目录
-OUTPUT_DIR = bin
+BINARY_NAME = ai
 
-# Go 文件路径
-MAIN_FILE = ai-ops-agent.go
+# 默认平台
+GOOS ?= linux
+GOARCH ?= amd64
 
-# 目标二进制文件名
-ARM_TARGET = $(OUTPUT_DIR)/ai-ops-agent-arm64
-X86_TARGET = $(OUTPUT_DIR)/ai-ops-agent-amd64
+# 编译输出路径
+OUTPUT_DIR = build/$(GOOS)_$(GOARCH)
 
-# all 目标，依赖于 ARM 和 x86 的编译目标
-all: build-arm64 build-amd64
+# 构建命令
+build:
+	@echo "Building for $(GOOS)/$(GOARCH)..."
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/$(BINARY_NAME) .
 
-# 编译 ARM 架构
-build-arm64:
-	mkdir -p $(OUTPUT_DIR)
-	GOOS=linux GOARCH=arm64 go build -o $(ARM_TARGET) $(MAIN_FILE)
+# 快捷命令
+build-linux-amd64:
+	$(MAKE) build GOOS=linux GOARCH=amd64
 
-# 编译 x86 架构
-build-amd64:
-	mkdir -p $(OUTPUT_DIR)
-	GOOS=linux GOARCH=amd64 go build -o $(X86_TARGET) $(MAIN_FILE)
+build-linux-arm64:
+	$(MAKE) build GOOS=linux GOARCH=arm64
 
-# 清理生成的文件
+build-windows-amd64:
+	$(MAKE) build GOOS=windows GOARCH=amd64
+
+build-darwin-arm64:
+	$(MAKE) build GOOS=darwin GOARCH=arm64
+
+build-darwin-amd64:
+	$(MAKE) build GOOS=darwin GOARCH=amd64
+
 clean:
-	rm -rf $(OUTPUT_DIR)
+	rm -rf build
