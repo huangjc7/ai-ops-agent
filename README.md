@@ -1,6 +1,10 @@
 # AI运维助手
-* 对话式进行运维操作，可以部署、排查、分析等能力，... 比较考验模型能力
-* 最小可行验证方式，仅提供思路，代码部份边界约束条件较不完善，可尝试玩一玩；后续有时间或者issues留言完善
+* 对话式进行运维操作，可以部署、排查、分析等能力，... 较考验模型能力
+
+# 演示
+[![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
+
+
 # 使用方式
 ```shell
 # 注意区分架构版本
@@ -12,9 +16,6 @@ $ export BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 $ export MODEL="qwen3-max"
 $ ./ai-ops-agent
 ```
-
-# 使用效果演示
-[![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
 
 # 实现方式
 * 纯Prompt实现，依赖模型自身规划能力
