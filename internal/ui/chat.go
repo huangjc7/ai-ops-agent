@@ -5,13 +5,15 @@ import (
 	"ai-ops-agent/internal/executor"
 	"ai-ops-agent/internal/prompt"
 	"ai-ops-agent/pkg/shell"
+	"ai-ops-agent/pkg/system"
 	"ai-ops-agent/pkg/text"
 	"encoding/json"
 	"fmt"
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"strings"
 	"time"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 type ChatUI struct {
@@ -263,12 +265,7 @@ func (ui *ChatUI) AIA(input string) {
 	}
 
 	// 判断类型变化并注入初始化 prompt
-	ui.classSvc.AddUserRoleSession(prompt.Templates[prompt.Class].System)
-	ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send()
-
-	replyAI := ui.classSvc.PrintResponse()
-	//ui.chatView.Write([]byte(replyAI))
-
+	replyAI := ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send().PrintResponse()
 	ui.classSvc.Close()
 
 	var inputClass = prompt.InputClassResult
@@ -279,13 +276,11 @@ func (ui *ChatUI) AIA(input string) {
 
 	// 判断是否需要更新 prompt 类型
 	if !ui.systemInjected {
-		ui.svc.AddSystemRoleSession(prompt.Templates[prompt.InitPrompt].System)
-		ui.svc.AddSystemRoleSession(prompt.Templates[prompt.InitPrompt].User)
+		ui.svc.AddSystemRoleSession(fmt.Sprintf(prompt.Templates[prompt.InitPrompt].User, system.GetSystemInfo()))
 		ui.systemInjected = true
 	}
 
 	// 判断是否需要切换类型 Prompt
-
 	switch inputClass.Type {
 	case strings.ToLower(prompt.Ask):
 		ui.Ask(input)
@@ -295,14 +290,11 @@ func (ui *ChatUI) AIA(input string) {
 		ui.chatView.Write([]byte("[debug]: 没有匹配到类型"))
 	}
 
-	//ui.chatView.Write([]byte("\n执行完毕\n"))
-
 }
 
 func (ui *ChatUI) Ask(input string) {
-	ui.svc.AddSystemRoleSession(fmt.Sprintf(prompt.Templates[prompt.Ask].User, input))
 	ui.err = ui.svc.
-		AddUserRoleSession(input).
+		AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Ask].User, input)).
 		SendStream(func(token string) {
 			ui.chatView.Write([]byte(token))
 		})
@@ -311,8 +303,7 @@ func (ui *ChatUI) Ask(input string) {
 }
 
 func (ui *ChatUI) Operation(input string) {
-	ui.svc.AddSystemRoleSession(fmt.Sprintf(prompt.Templates[prompt.Operation].User, input))
-	ui.svc.AddUserRoleSession(input).Send()
+	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Operation].User, input)).Send()
 	if ui.err != nil {
 		ui.chatView.Write([]byte("[red]\n错误: " + ui.err.Error() + "[-]\n"))
 		return
