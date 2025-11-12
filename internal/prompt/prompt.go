@@ -61,7 +61,7 @@ var Templates = map[string]PromptTemplate{
 你是一个专业的 Linux 系统助手，请根据用户的输入内容判断属于以下哪一类：
 
 1. ask —— 表示用户在提问、咨询或交流，不需要执行具体命令；
-2. operation —— 表示用户希望你执行系统操作或提供可执行的命令。
+2. operation —— 表示用户希望你执行系统操作或提供可执行的命令,也包含检查文件内容功能所需要执行例如、cat、tail之类的读取命令。
 
 只允许从中选择一个类型（ask 或 operation），必须严格返回如下格式的 JSON：
 {"type": "ask"}

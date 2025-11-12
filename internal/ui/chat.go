@@ -357,9 +357,9 @@ func (ui *ChatUI) Operation(input string) {
 				// shell执行
 				result := ui.execer.Run(command.Cmd)
 				if result.ExitCode == 0 {
-					fmtResult += fmt.Sprintf("%s 的执行结果: %s\n\n", command.Cmd, result.Stdout)
+					fmtResult += fmt.Sprintf("%s 的执行结果: \n%s\n\n", command.Cmd, result.Stdout)
 				} else {
-					fmtResult += fmt.Sprintf("%s 的执行结果: %s\n\n", command.Cmd, result.Stderr)
+					fmtResult += fmt.Sprintf("%s 的执行结果: \n%s\n\n", command.Cmd, result.Stderr)
 				}
 			}
 		}
