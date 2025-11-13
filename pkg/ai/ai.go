@@ -20,9 +20,11 @@ const (
 
 func NewAIClientProvider() (*ClientProvider, error) {
 	config := &Config{
-		ApiKey:  env.Get("API_KEY", ""),
-		BaseURL: env.Get("BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-		Model:   env.Get("MODEL", "qwen3-max"),
+		ApiKey: env.Get("API_KEY", ""),
+		//BaseURL: env.Get("BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+		//Model:   env.Get("MODEL", "qwen3-max"),
+		BaseURL: env.Get("BASE_URL", ""),
+		Model:   env.Get("MODEL", ""),
 	}
 
 	textGenClient, err := InitModel(TextGenTextModel, config)

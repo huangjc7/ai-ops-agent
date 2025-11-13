@@ -4,9 +4,10 @@ import (
 	"ai-ops-agent/internal/ui"
 
 	"fmt"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
@@ -22,6 +23,22 @@ var rootCmd = &cobra.Command{
 示例：
   API_KEY=yourkey BASE_URL=https://api.openai.com/v1 MODEL=chatGPT-4o ./ai-ops-agent run
 `,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+
+		if os.Getenv("BASE_URL") == "" {
+			return fmt.Errorf("没有配置BASE_URL环境变量")
+		}
+
+		if os.Getenv("MODEL") == "" {
+			return fmt.Errorf("没有配置MODEL环境变量")
+		}
+
+		if os.Getenv("API_KEY") == "" {
+			return fmt.Errorf("没有配置API_KEY环境变量")
+		}
+		return nil
+	},
+
 	Run: func(cmd *cobra.Command, args []string) {
 		chat := ui.NewChatUI()
 		if err := chat.Run(); err != nil {

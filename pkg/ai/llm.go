@@ -3,8 +3,9 @@ package ai
 import (
 	"context"
 	"encoding/json"
-	openai "github.com/sashabaranov/go-openai"
 	"log"
+
+	openai "github.com/sashabaranov/go-openai"
 )
 
 // 最大对话历史长度，防止 Token 超限
@@ -167,13 +168,21 @@ func (oc *OpenClient) Send() *OpenClient {
 	resp, err := oc.client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model:    oc.model,
 		Messages: oc.ChatHistory,
+		Stream:   false,
 	})
 	oc.RawResponse = &resp
 	if err != nil {
 		log.Println("请求 AI 失败:", err)
+		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, "请求 AI 失败: "+err.Error())
+		return oc
 	}
 
 	// 如果 AI 没有调用 Function，直接返回回答
+	if len(resp.Choices) == 0 {
+		log.Println("请求 AI 成功但未返回任何回复")
+		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, "请求 AI 成功但未返回任何回复")
+		return oc
+	}
 	aiReply := resp.Choices[0].Message.Content
 
 	// 追加 AI 回复到历史对话
