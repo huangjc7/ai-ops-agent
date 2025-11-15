@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/user"
 	"runtime"
 	"strings"
 )
@@ -35,9 +36,10 @@ func GetSystemInfo() string {
 
 	// CPU 核心数
 	b.WriteString(fmt.Sprintf("CPU 核心数: %d\n", runtime.NumCPU()))
-
 	// Go 版本
 	b.WriteString(fmt.Sprintf("Go版本: %s\n", runtime.Version()))
+	u, _ := user.Current()
+	b.WriteString(fmt.Sprintf("当前登录用户 %s \n", u.Username))
 
 	return b.String()
 }

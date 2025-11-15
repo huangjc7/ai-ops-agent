@@ -22,9 +22,10 @@ type Controller interface {
 	Send() *OpenClient                             // 请求AI
 	AddUserRoleSession(content string) *OpenClient // 添加对话到历史记录中
 	AddSystemRoleSession(content string) *OpenClient
-	Close()                // 清空所有历史会话
-	PrintResponse() string // 打印最新AI回复
-	PrintHistory()         // 打印整个历史对话
+	AddSystemRoleSessionOne(content string) *OpenClient // 唯一添加 SystemRole，会先删除已有的
+	Close()                                             // 清空所有历史会话
+	PrintResponse() string                              // 打印最新AI回复
+	PrintHistory()                                      // 打印整个历史对话
 	GetHistory() []openai.ChatCompletionMessage
 	AddUserRoleMultiContent(contents []openai.ChatMessagePart) *OpenClient // 构造多模态内容
 	SendStream(onToken func(string)) error                                 //流式输出
@@ -104,6 +105,27 @@ func (oc *OpenClient) AddSystemRoleSession(content string) *OpenClient {
 		Role:    openai.ChatMessageRoleSystem,
 		Content: content,
 	})
+	return oc
+}
+
+// AddSystemRoleSessionOne 唯一AddSystemRoleSessionOne添加 SystemRole 会话
+// 在添加新的 SystemRole 之前，会先删除所有已有的 SystemRole 会话
+func (oc *OpenClient) AddSystemRoleSessionOne(content string) *OpenClient {
+	// 创建一个新的切片，过滤掉所有 System 角色的消息
+	var filteredHistory []openai.ChatCompletionMessage
+	for _, msg := range oc.ChatHistory {
+		if msg.Role != openai.ChatMessageRoleSystem {
+			filteredHistory = append(filteredHistory, msg)
+		}
+	}
+
+	// 将新的 SystemRole 添加到最前面（通常 SystemRole 应该在对话历史的最开始）
+	newSystemMsg := openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: content,
+	}
+	oc.ChatHistory = append([]openai.ChatCompletionMessage{newSystemMsg}, filteredHistory...)
+
 	return oc
 }
 

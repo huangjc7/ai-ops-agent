@@ -1,0 +1,55 @@
+package precheck
+
+import (
+	"ai-ops-agent/internal/version"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+)
+
+func CheckVar() error {
+	if os.Getenv("BASE_URL") == "" {
+		return fmt.Errorf("没有配置BASE_URL环境变量")
+	}
+
+	if os.Getenv("MODEL") == "" {
+		return fmt.Errorf("没有配置MODEL环境变量")
+	}
+
+	if os.Getenv("API_KEY") == "" {
+		return fmt.Errorf("没有配置API_KEY环境变量")
+	}
+
+	return nil
+}
+
+func CheckVersion() (bool, error) {
+
+	versionURL := "http://huangjc.cc/ai-ops-agent/latest"
+	currentVersion := version.Version
+
+	clinet := http.Client{Timeout: time.Second * 3}
+	req, err := http.NewRequest("GET", versionURL, nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := clinet.Do(req)
+	if err != nil {
+		return false, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	if currentVersion == string(body) {
+		return true, nil
+	}
+	return false, nil
+}

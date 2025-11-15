@@ -20,6 +20,7 @@ type ChatUI struct {
 	err            error
 	app            *tview.Application
 	classSvc       ai.Controller // 专门用于分类（临时对话上下文）
+	TmpSvc         ai.Controller // 临时使用
 	svc            ai.Controller // 主对话上下文，负责和用户持续交互
 	chatView       *tview.TextView
 	input          *tview.InputField
@@ -55,15 +56,16 @@ func (ui *ChatUI) printWelcomeSlowly(text string) {
 func NewChatUI() *ChatUI {
 
 	execer := executor.New(10 * time.Second)
-
 	svc := ai.GetAIModel().TextGenTextModelClient
 	classSvc := ai.GetAIModel().TextGenTextModelClient
+	tmpSvc := ai.GetAIModel().TextGenTextModelClient
 
 	ui := &ChatUI{
 		app:      tview.NewApplication(),
 		svc:      svc,
 		classSvc: classSvc,
 		execer:   execer,
+		TmpSvc:   tmpSvc,
 	}
 
 	var scrollOffset int
@@ -254,7 +256,7 @@ func (ui *ChatUI) AIA(input string) {
 
 	// 判断是否需要更新 prompt 类型
 	if !ui.systemInjected {
-		ui.svc.AddSystemRoleSession(fmt.Sprintf(prompt.Templates[prompt.InitPrompt].User, system.GetSystemInfo()))
+		ui.svc.AddSystemRoleSession(fmt.Sprintf(prompt.Templates[prompt.InitPrompt].User))
 		ui.systemInjected = true
 	}
 
@@ -272,7 +274,8 @@ func (ui *ChatUI) AIA(input string) {
 
 func (ui *ChatUI) Ask(input string) {
 	ui.err = ui.svc.
-		AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Ask].User, input)).
+		AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Ask].System, system.GetSystemInfo())).
+		AddUserRoleSession(input).
 		SendStream(func(token string) {
 			ui.chatView.Write([]byte(token))
 		})
@@ -281,7 +284,8 @@ func (ui *ChatUI) Ask(input string) {
 }
 
 func (ui *ChatUI) Operation(input string) {
-	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Operation].User, input)).Send()
+	ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
+		AddUserRoleSession(input).Send()
 	if ui.err != nil {
 		ui.chatView.Write([]byte("[red]\n错误: " + ui.err.Error() + "[-]\n"))
 		return
@@ -312,9 +316,7 @@ func (ui *ChatUI) Operation(input string) {
 
 				// 检测高位命令
 				if shell.IsDangerousCommandRegex(command.Cmd) {
-
 					ui.chatView.Write([]byte(fmt.Sprintf("[red][警告] 检测到高风险命令: %s\n是否确认执行？(y/n): [-]", command.Cmd)))
-
 					ui.app.QueueUpdateDraw(func() {
 						ui.input.SetDisabled(false)
 						ui.app.SetFocus(ui.input)
@@ -342,10 +344,11 @@ func (ui *ChatUI) Operation(input string) {
 			}
 		}
 
-		ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, fmtResult))
+		cmdExecSummary := ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send().PrintResponse()
+		ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 		// 重新 Send 一次，继续对话
-		ui.svc.Send().SendStream(func(token string) {
+		ui.svc.SendStream(func(token string) {
 			ui.chatView.Write([]byte(token))
 		})
 
@@ -357,14 +360,13 @@ func (ui *ChatUI) Operation(input string) {
 func (ui *ChatUI) Run() error {
 
 	go func() {
-		time.Sleep(10 * time.Millisecond)
+		//time.Sleep(10 * time.Millisecond)
 		ui.printWelcomeSlowly(
 			"[blue]欢迎使用 Linux AI 助手！输入问题并按 Enter 开始对话[-]\n" +
 				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]\n\n" +
 				"[green]帮助信息:" + "\n" +
 				"[green]/h       帮助信息" + "\n" +
-				"[green]/history 查看对话历史" + "\n" +
-				"[green]/clear   清除本次对话AI记忆")
+				"[green]/clear   清除对话记录")
 		ui.app.Draw()
 	}()
 

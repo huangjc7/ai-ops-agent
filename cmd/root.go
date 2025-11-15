@@ -2,12 +2,19 @@ package cmd
 
 import (
 	"ai-ops-agent/internal/ui"
+	"ai-ops-agent/internal/version"
+	"ai-ops-agent/pkg/precheck"
+	"time"
 
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	showVersion bool
 )
 
 var rootCmd = &cobra.Command{
@@ -25,16 +32,26 @@ var rootCmd = &cobra.Command{
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 
-		if os.Getenv("BASE_URL") == "" {
-			return fmt.Errorf("没有配置BASE_URL环境变量")
+		ok, err := precheck.CheckVersion()
+		if err == nil {
+			if !ok {
+				fmt.Println("有新版本，下载新版本得到更好体验。4秒后进入工具")
+				time.Sleep(time.Second * 4)
+			}
 		}
 
-		if os.Getenv("MODEL") == "" {
-			return fmt.Errorf("没有配置MODEL环境变量")
+		if err := precheck.CheckVar(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+		return nil
+	},
 
-		if os.Getenv("API_KEY") == "" {
-			return fmt.Errorf("没有配置API_KEY环境变量")
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if showVersion {
+			fmt.Printf("Version: %s\nCommit: %s\nBuilt: %s\n",
+				version.Version, version.Commit, version.BuildDate)
+			os.Exit(0)
 		}
 		return nil
 	},
@@ -45,6 +62,10 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().BoolVarP(&showVersion, "version", "v", false, "show version and exit")
 }
 
 func Execute() {
