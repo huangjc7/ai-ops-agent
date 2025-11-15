@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -48,7 +49,7 @@ func CheckVersion() (bool, error) {
 		return false, err
 	}
 
-	if currentVersion == string(body) {
+	if strings.TrimSpace(currentVersion) == strings.TrimSpace(string(body)) {
 		return true, nil
 	}
 	return false, nil
