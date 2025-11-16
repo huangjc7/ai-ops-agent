@@ -127,6 +127,15 @@ func NewChatUI() *ChatUI {
 	ui.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTAB {
 			current := ui.app.GetFocus()
+
+			// 检查当前焦点是否在主视图的组件上
+			// 如果焦点不在 input 或 chatView 上，说明在帮助视图或历史视图中
+			if current != ui.input && current != ui.chatView {
+				// 不在主视图，忽略 Tab 键
+				return event
+			}
+
+			// 只在主视图中处理 Tab 键切换
 			switch current.(type) {
 			case *tview.InputField:
 				ui.app.SetFocus(ui.chatView)
@@ -375,10 +384,7 @@ func (ui *ChatUI) Run() error {
 	go func() {
 		ui.printWelcomeSlowly(
 			"[blue]欢迎使用 Linux AI 助手！输入问题并按 Enter 开始对话[-]\n" +
-				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]\n\n" +
-				"[green]帮助信息:" + "\n" +
-				"[green]/h       帮助信息" + "\n" +
-				"[green]/clear   清除对话记录")
+				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]")
 		ui.app.Draw()
 	}()
 

@@ -17,6 +17,9 @@ func (ui *ChatUI) PrintHelpInfo() {
 
 	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/h", "帮助信息")))
 	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/clear", "清除本次对话AI记忆")))
+	helpView.Write([]byte(fmt.Sprintf("\n\n")))
+	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "快捷键", "")))
+	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "tab", "切换聚焦框")))
 
 	helpView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {

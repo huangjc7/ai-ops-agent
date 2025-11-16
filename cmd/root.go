@@ -35,7 +35,7 @@ var rootCmd = &cobra.Command{
 		ok, err := precheck.CheckVersion()
 		if err == nil {
 			if !ok {
-				fmt.Println("有新版本，下载新版本得到更好体验。4秒后进入工具")
+				fmt.Println("有新版本，下载新版本得到更好体验。4秒后进入工具。")
 				time.Sleep(time.Second * 4)
 			}
 		}
