@@ -1,5 +1,6 @@
 # AI运维助手
-* 纯依赖Ai自主式运维Agent，在完全使用模型规划、执行等能力的同时，保障执行安全。
+* 完全自主式运维Agent，能够提供部署、排查、分析等多方面运维能力。
+* 在完全使用模型规划、执行等能力的同时，保障了执行安全。
 
 # 演示
 [![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
