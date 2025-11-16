@@ -1,5 +1,5 @@
 # AI运维助手
-* 对话式进行运维操作，可以部署、排查、分析等能力
+* 纯依赖Ai自主式运维Agent，在完全使用模型规划、执行等能力的同时，保障执行安全。
 
 # 演示
 [![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
@@ -22,9 +22,6 @@ $ export BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 $ export MODEL="qwen3-max"
 $ ./ai-ops-agent
 ```
-
-# 实现方式
-* 纯Prompt实现，依赖模型自身规划能力
 
 # 目前适配模型
 | 模型        | 是否支持 |

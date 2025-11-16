@@ -373,7 +373,6 @@ func (ui *ChatUI) Operation(input string) {
 func (ui *ChatUI) Run() error {
 
 	go func() {
-		//time.Sleep(10 * time.Millisecond)
 		ui.printWelcomeSlowly(
 			"[blue]欢迎使用 Linux AI 助手！输入问题并按 Enter 开始对话[-]\n" +
 				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]\n\n" +
