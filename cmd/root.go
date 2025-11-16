@@ -28,14 +28,17 @@ var rootCmd = &cobra.Command{
   • MODEL     - 模型名称（默认：qwen3-max）
 
 示例：
-  API_KEY=yourkey BASE_URL=https://api.openai.com/v1 MODEL=chatGPT-4o ./ai-ops-agent run
+  API_KEY=yourkey BASE_URL=https://api.openai.com/v1 MODEL=chatGPT-4o ./ai-ops-agent
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 
 		ok, err := precheck.CheckVersion()
 		if err == nil {
 			if !ok {
-				fmt.Println("有新版本，下载新版本得到更好体验。4秒后进入工具。")
+				fmt.Println("有新版本，下载新版本得到更好体验。" +
+					"下载地址：https://github.com/huangjc7/ai-ops-agent/releases" +
+					"\n" +
+					"4秒后进入工具")
 				time.Sleep(time.Second * 4)
 			}
 		}
