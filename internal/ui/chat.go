@@ -357,6 +357,7 @@ func (ui *ChatUI) Operation(input string) {
 			return
 		}
 		cmdExecSummary := ui.TmpSvc.PrintResponse()
+		ui.TmpSvc.Close() // 清理动作
 		ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 		// 重新 Send 一次，继续对话

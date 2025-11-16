@@ -1,9 +1,15 @@
 # AI运维助手
-* 对话式进行运维操作，可以部署、排查、分析等能力，... 较考验模型能力
+* 对话式进行运维操作，可以部署、排查、分析等能力
 
 # 演示
 [![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
 
+# 环境变量
+| 变量名          | 描述                 | 默认值   |
+|------------|--------------------|-------|
+| `BASE_URL` | 模型调用API地址          | `nil` |
+| `API_KEY` | 调认证APIKEY          | `nil` |
+| `MODEL` | 模型名称，如"ChatGPT-4o" | `nil` |
 
 # 使用方式
 ```shell

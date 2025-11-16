@@ -16,7 +16,6 @@ func (ui *ChatUI) PrintHelpInfo() {
 		SetTitle(" 帮助信息（按 Esc 返回）")
 
 	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/h", "帮助信息")))
-	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/history", "查看对话历史")))
 	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/clear", "清除本次对话AI记忆")))
 
 	helpView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
