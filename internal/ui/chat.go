@@ -245,11 +245,15 @@ func (ui *ChatUI) AIA(input string) {
 	}
 
 	// 判断类型变化并注入初始化 prompt
-	replyAI := ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send().PrintResponse()
+	if ui.err = ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send(); ui.err != nil {
+		ui.chatView.Write([]byte("[red]分类请求失败: " + ui.err.Error() + "[-]\n"))
+		return
+	}
+	replyAi := ui.classSvc.PrintResponse()
 	ui.classSvc.Close()
 
 	var inputClass = prompt.InputClassResult
-	if ui.err = json.Unmarshal([]byte(replyAI), &inputClass); ui.err != nil {
+	if ui.err = json.Unmarshal([]byte(replyAi), &inputClass); ui.err != nil {
 		ui.chatView.Write([]byte(ui.err.Error()))
 		return
 	}
@@ -273,20 +277,24 @@ func (ui *ChatUI) AIA(input string) {
 }
 
 func (ui *ChatUI) Ask(input string) {
-	ui.err = ui.svc.
+	err := ui.svc.
 		AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Ask].System, system.GetSystemInfo())).
 		AddUserRoleSession(input).
 		SendStream(func(token string) {
 			ui.chatView.Write([]byte(token))
 		})
 
+	if err != nil {
+		ui.chatView.Write([]byte("[red]\n错误: " + ui.err.Error() + "[-]\n"))
+		return
+	}
+
 	ui.chatView.Write([]byte("\n"))
 }
 
 func (ui *ChatUI) Operation(input string) {
-	ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
-		AddUserRoleSession(input).Send()
-	if ui.err != nil {
+	if ui.err = ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
+		AddUserRoleSession(input).Send(); ui.err != nil {
 		ui.chatView.Write([]byte("[red]\n错误: " + ui.err.Error() + "[-]\n"))
 		return
 	}
@@ -344,7 +352,11 @@ func (ui *ChatUI) Operation(input string) {
 			}
 		}
 
-		cmdExecSummary := ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send().PrintResponse()
+		if ui.err = ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send(); ui.err != nil {
+			ui.chatView.Write([]byte("[red]总结请求失败: " + ui.err.Error() + "[-]\n"))
+			return
+		}
+		cmdExecSummary := ui.TmpSvc.PrintResponse()
 		ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 		// 重新 Send 一次，继续对话

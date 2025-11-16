@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	openai "github.com/sashabaranov/go-openai"
@@ -19,7 +20,7 @@ type OpenClient struct {
 }
 
 type Controller interface {
-	Send() *OpenClient                             // 请求AI
+	Send() error                                   // 请求AI
 	AddUserRoleSession(content string) *OpenClient // 添加对话到历史记录中
 	AddSystemRoleSession(content string) *OpenClient
 	AddSystemRoleSessionOne(content string) *OpenClient // 唯一添加 SystemRole，会先删除已有的
@@ -181,8 +182,7 @@ func (oc *OpenClient) SendStream(onToken func(string)) error {
 	return nil
 }
 
-func (oc *OpenClient) Send() *OpenClient {
-
+func (oc *OpenClient) Send() error {
 	//裁剪对话历史 上下文问题比较头疼， 考虑后面版本处理
 	//ChatHistory = trimChatHistory(ChatHistory)
 
@@ -194,23 +194,24 @@ func (oc *OpenClient) Send() *OpenClient {
 	})
 	oc.RawResponse = &resp
 	if err != nil {
-		log.Println("请求 AI 失败:", err)
+		log.Println("请求Ai失败:", err)
 		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, "请求 AI 失败: "+err.Error())
-		return oc
+		return err
 	}
 
 	// 如果 AI 没有调用 Function，直接返回回答
 	if len(resp.Choices) == 0 {
-		log.Println("请求 AI 成功但未返回任何回复")
-		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, "请求 AI 成功但未返回任何回复")
-		return oc
+		err := fmt.Errorf("请求 AI 成功但未返回任何回复")
+		log.Println(err.Error())
+		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, err.Error())
+		return err
 	}
 	aiReply := resp.Choices[0].Message.Content
 
 	// 追加 AI 回复到历史对话
 	oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, aiReply)
 
-	return oc
+	return nil
 }
 
 func (oc *OpenClient) Close() {
