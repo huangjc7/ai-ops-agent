@@ -15,7 +15,7 @@
 # 使用方式
 ```shell
 # 注意区分架构版本
-$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.5/ai-ops-agent_linux_amd64.tar.gz
+$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.6/ai-ops-agent_linux_amd64.tar.gz
 $ tar xf ai-ops-agent_linux_amd64.tar.gz 
 $ chmod +x ./ai-ops-agent
 $ export API_KEY="你的密钥"

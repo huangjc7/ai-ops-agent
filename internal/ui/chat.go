@@ -24,6 +24,7 @@ type ChatUI struct {
 	svc            ai.Controller // 主对话上下文，负责和用户持续交互
 	chatView       *tview.TextView
 	input          *tview.InputField
+	confirmPrompt  *ConfirmationPrompt
 	systemInjected bool            // 初始化一次标签
 	rootLayout     tview.Primitive // 用于恢复主视图
 	execer         *executor.ShellExecutor
@@ -84,7 +85,8 @@ func NewChatUI() *ChatUI {
 		})
 
 	// 新建输入视图
-	ui.input = tview.NewInputField().SetLabel("You: ").SetFieldWidth(0).SetDoneFunc(ui.handleInput)
+	ui.input = tview.NewInputField().SetLabel("You: ").SetFieldWidth(0)
+	ui.input.SetDoneFunc(ui.handleInput)
 
 	// 设置标题
 	ui.chatView.SetBorder(true).SetTitle(" Linux AI Assistant ")
@@ -122,6 +124,9 @@ func NewChatUI() *ChatUI {
 
 	ui.app.SetRoot(layout, true) // 设置容器全屏显示
 	ui.app.SetFocus(ui.input)    // 设置聚焦在输入视图
+
+	ui.confirmPrompt = NewConfirmationPrompt(ui.app, ui.input, ui.chatView)
+	ui.confirmPrompt.SetDefaultState("You: ", ui.handleInput)
 
 	// 切换聚焦 需要在app里面切换聚焦
 	ui.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -318,13 +323,35 @@ func (ui *ChatUI) Operation(input string) {
 
 		var fmtResult string
 
-		// 防止AI抽风 给多了<result>对
+		// 防止AI抽风 多给了<result>标签对
 		for _, resultData := range resultDatas {
 			ui.err = json.Unmarshal([]byte(resultData), &commands)
 			if ui.err != nil {
 				ui.chatView.Write([]byte("[red]解析命令失败：" + ui.err.Error() + "[-]\n"))
 				return
 			}
+
+			for setp, command := range commands {
+				ui.chatView.Write([]byte(fmt.Sprintf("步骤:%d 命令:%s 描述:%s\n", setp+1, command.Cmd, command.Desc)))
+			}
+
+			ui.chatView.Write([]byte("[yellow][提示] 执行命令清单检查,是否确认上述执行？(y/n): [-]"))
+
+			// 重新绘界面
+			ui.app.QueueUpdateDraw(func() {
+				ui.input.SetDisabled(false)
+				ui.app.SetFocus(ui.input)
+			})
+
+			// 获取用户输入
+			confirmed := ui.confirmPrompt.Confirm(ConfirmOptions{})
+			if !confirmed {
+				return
+			}
+
+			ui.app.QueueUpdateDraw(func() {
+				ui.input.SetDisabled(true)
+			})
 
 			for i, command := range commands {
 
@@ -334,13 +361,14 @@ func (ui *ChatUI) Operation(input string) {
 				// 检测高位命令
 				if shell.IsDangerousCommandRegex(command.Cmd) {
 					ui.chatView.Write([]byte(fmt.Sprintf("[red][警告] 检测到高风险命令: %s\n是否确认执行？(y/n): [-]", command.Cmd)))
+					// 重新绘界面
 					ui.app.QueueUpdateDraw(func() {
 						ui.input.SetDisabled(false)
 						ui.app.SetFocus(ui.input)
 					})
 
 					// 获取用户输入
-					confirmed := ui.waitForUserConfirmation()
+					confirmed := ui.confirmPrompt.Confirm(ConfirmOptions{})
 					if !confirmed {
 						ui.chatView.Write([]byte("[yellow]已跳过该命令执行[-]\n"))
 						continue
@@ -389,43 +417,4 @@ func (ui *ChatUI) Run() error {
 	}()
 
 	return ui.app.Run()
-}
-
-func (ui *ChatUI) waitForUserConfirmation() bool {
-	inputChan := make(chan bool)
-
-	// 恢复原始输入逻辑
-	defer func() {
-		ui.app.QueueUpdateDraw(func() {
-			ui.input.SetLabel("You: ")
-			ui.input.SetText("")
-			ui.input.SetDoneFunc(ui.handleInput)
-		})
-	}()
-
-	ui.app.QueueUpdateDraw(func() {
-		ui.input.SetLabel("确认 (y/n): ")
-		ui.input.SetText("")
-		ui.input.SetDoneFunc(func(key tcell.Key) {
-			if key == tcell.KeyEnter {
-				resp := strings.TrimSpace(strings.ToLower(ui.input.GetText()))
-				ui.input.SetText("")
-				if resp == "y" {
-					ui.chatView.Write([]byte("[green]用户已确认执行命令[-]\n"))
-					inputChan <- true
-				} else {
-					ui.chatView.Write([]byte("[yellow]用户已取消该命令[-]\n"))
-					inputChan <- false
-				}
-			}
-		})
-	})
-
-	select {
-	case result := <-inputChan:
-		return result
-	case <-time.After(30 * time.Second):
-		ui.chatView.Write([]byte("\n[red]超时未确认，已跳过该命令[-]\n"))
-		return false
-	}
 }
