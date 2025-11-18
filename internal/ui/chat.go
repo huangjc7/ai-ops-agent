@@ -253,7 +253,7 @@ func (ui *ChatUI) AIA(input string) {
 			ui.chatView.Write([]byte(result.Stdout))
 		} else {
 			ui.svc.AddUserRoleSession(input + "的执行结果：" + result.Stderr)
-			ui.chatView.Write([]byte(result.Stdout))
+			ui.chatView.Write([]byte(result.Stderr))
 		}
 		return
 	}
@@ -299,7 +299,7 @@ func (ui *ChatUI) Ask(input string) {
 		})
 
 	if err != nil {
-		ui.chatView.Write([]byte("[red]\n错误: " + ui.err.Error() + "[-]\n"))
+		ui.chatView.Write([]byte("[red]\n[错误] " + ui.err.Error() + "[-]\n"))
 		return
 	}
 
@@ -309,7 +309,7 @@ func (ui *ChatUI) Ask(input string) {
 func (ui *ChatUI) Operation(input string) {
 	if ui.err = ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
 		AddUserRoleSession(input).Send(); ui.err != nil {
-		ui.chatView.Write([]byte("[red]\n错误: " + ui.err.Error() + "[-]\n"))
+		ui.chatView.Write([]byte("[red]\n[错误] " + ui.err.Error() + "[-]\n"))
 		return
 	}
 
@@ -318,92 +318,96 @@ func (ui *ChatUI) Operation(input string) {
 
 	// 如果回复包含 <result> 标签，尝试解析并执行命令
 	var commands prompt.SuggestionList
-	if strings.Contains(reply, "<result>") {
-		resultDatas := text.ExtractAllResults(reply)
+	if !strings.Contains(reply, "<result>") {
+		ui.chatView.Write([]byte("[red][错误] 没有解析<result>标签对，请联系开发"))
+		return
+	}
 
-		var fmtResult string
+	resultDatas := text.ExtractAllResults(reply)
 
-		// 防止AI抽风 多给了<result>标签对
-		for _, resultData := range resultDatas {
-			ui.err = json.Unmarshal([]byte(resultData), &commands)
-			if ui.err != nil {
-				ui.chatView.Write([]byte("[red]解析命令失败：" + ui.err.Error() + "[-]\n"))
-				return
-			}
+	var fmtResult string
 
-			for setp, command := range commands {
-				ui.chatView.Write([]byte(fmt.Sprintf("步骤:%d 命令:%s 描述:%s\n", setp+1, command.Cmd, command.Desc)))
-			}
-
-			ui.chatView.Write([]byte("[yellow][提示] 执行命令清单检查,是否确认上述执行？(y/n): [-]"))
-
-			// 重新绘界面
-			ui.app.QueueUpdateDraw(func() {
-				ui.input.SetDisabled(false)
-				ui.app.SetFocus(ui.input)
-			})
-
-			// 获取用户输入
-			confirmed := ui.confirmPrompt.Confirm(ConfirmOptions{})
-			if !confirmed {
-				return
-			}
-
-			ui.app.QueueUpdateDraw(func() {
-				ui.input.SetDisabled(true)
-			})
-
-			for i, command := range commands {
-
-				//desc := strings.TrimSpace(command.Desc) // 去掉首尾空格
-				ui.chatView.Write([]byte(fmt.Sprintf("[blue]%d) %s[-]\n", i+1, command.Desc)))
-
-				// 检测高位命令
-				if shell.IsDangerousCommandRegex(command.Cmd) {
-					ui.chatView.Write([]byte(fmt.Sprintf("[red][警告] 检测到高风险命令: %s\n是否确认执行？(y/n): [-]", command.Cmd)))
-					// 重新绘界面
-					ui.app.QueueUpdateDraw(func() {
-						ui.input.SetDisabled(false)
-						ui.app.SetFocus(ui.input)
-					})
-
-					// 获取用户输入
-					confirmed := ui.confirmPrompt.Confirm(ConfirmOptions{})
-					if !confirmed {
-						ui.chatView.Write([]byte("[yellow]已跳过该命令执行[-]\n"))
-						continue
-					}
-
-					ui.app.QueueUpdateDraw(func() {
-						ui.input.SetDisabled(true)
-					})
-				}
-
-				// shell执行
-				result := ui.execer.Run(command.Cmd)
-				if result.ExitCode == 0 {
-					fmtResult += fmt.Sprintf("%s 的执行结果: \n%s\n\n", command.Cmd, result.Stdout)
-				} else {
-					fmtResult += fmt.Sprintf("%s 的执行结果: \n%s\n\n", command.Cmd, result.Stderr)
-				}
-			}
-		}
-
-		if ui.err = ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send(); ui.err != nil {
-			ui.chatView.Write([]byte("[red]总结请求失败: " + ui.err.Error() + "[-]\n"))
+	// 防止AI抽风 多给了<result>标签对
+	for _, resultData := range resultDatas {
+		ui.err = json.Unmarshal([]byte(resultData), &commands)
+		if ui.err != nil {
+			ui.chatView.Write([]byte("[red]解析命令失败：" + ui.err.Error() + "[-]\n"))
 			return
 		}
-		cmdExecSummary := ui.TmpSvc.PrintResponse()
-		ui.TmpSvc.Close() // 清理动作
-		ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
-		// 重新 Send 一次，继续对话
-		ui.svc.SendStream(func(token string) {
-			ui.chatView.Write([]byte(token))
+		for setp, command := range commands {
+			ui.chatView.Write([]byte(fmt.Sprintf("步骤:%d 命令:%s 描述:%s\n", setp+1, command.Cmd, command.Desc)))
+		}
+
+		ui.chatView.Write([]byte("[yellow][提示] 执行命令清单检查,是否确认上述执行？(y/n): [-]"))
+
+		// 重新绘界面
+		ui.app.QueueUpdateDraw(func() {
+			ui.input.SetDisabled(false)
+			ui.app.SetFocus(ui.input)
 		})
 
-		ui.chatView.Write([]byte("\n"))
+		// 获取用户输入
+		confirmed := ui.confirmPrompt.Confirm(ConfirmOptions{})
+		if !confirmed {
+			return
+		}
+
+		ui.app.QueueUpdateDraw(func() {
+			ui.input.SetDisabled(true)
+		})
+
+		for i, command := range commands {
+
+			//desc := strings.TrimSpace(command.Desc) // 去掉首尾空格
+			ui.chatView.Write([]byte(fmt.Sprintf("[blue]%d) %s[-]\n", i+1, command.Desc)))
+
+			// 检测高位命令
+			if shell.IsDangerousCommandRegex(command.Cmd) {
+				ui.chatView.Write([]byte(fmt.Sprintf("[red][警告] 检测到高风险命令: %s\n是否确认执行？(y/n): [-]", command.Cmd)))
+				// 重新绘界面
+				ui.app.QueueUpdateDraw(func() {
+					ui.input.SetDisabled(false)
+					ui.app.SetFocus(ui.input)
+				})
+
+				// 获取用户输入
+				confirmed := ui.confirmPrompt.Confirm(ConfirmOptions{})
+				if !confirmed {
+					ui.chatView.Write([]byte("[yellow]已跳过该命令执行[-]\n"))
+					continue
+				}
+
+				ui.app.QueueUpdateDraw(func() {
+					ui.input.SetDisabled(true)
+				})
+			}
+
+			// shell执行
+			result := ui.execer.Run(command.Cmd)
+			if result.ExitCode == 0 {
+				fmtResult += fmt.Sprintf("%s 的执行结果: \n%s\n\n", command.Cmd, result.Stdout)
+			} else {
+				fmtResult += fmt.Sprintf("%s 的执行结果: \n%s\n\n", command.Cmd, result.Stderr)
+			}
+		}
 	}
+
+	if ui.err = ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send(); ui.err != nil {
+		ui.chatView.Write([]byte("[red][错误] 总结请求失败: " + ui.err.Error() + "[-]\n"))
+		return
+	}
+	cmdExecSummary := ui.TmpSvc.PrintResponse()
+	ui.TmpSvc.Close() // 清理动作
+	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
+
+	// 重新 Send 一次，继续对话
+	ui.svc.SendStream(func(token string) {
+		ui.chatView.Write([]byte(token))
+	})
+
+	ui.chatView.Write([]byte("\n"))
+
 }
 
 // Run 启动 UI 应用
