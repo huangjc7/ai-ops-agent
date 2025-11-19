@@ -402,11 +402,17 @@ func (ui *ChatUI) Operation(input string) {
 	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 	// 重新 Send 一次，继续对话
+	var respBuilder strings.Builder
 	ui.svc.SendStream(func(token string) {
 		ui.chatView.Write([]byte(token))
+		respBuilder.WriteString(token)
 	})
 
+	if strings.Contains(respBuilder.String(), "<continue>") {
+		ui.Operation(prompt.ContinuePrompt)
+	}
 	ui.chatView.Write([]byte("\n"))
+	return
 
 }
 

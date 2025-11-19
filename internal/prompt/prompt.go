@@ -11,22 +11,9 @@ const (
 
 // ComprehensivePrompt 新增的大而全 Prompt
 
+const ContinuePrompt = "帮我继续处理上述问题"
+
 var Templates = map[string]PromptTemplate{
-	//	InitPrompt: {
-	//		User: `你是一个专业的 Linux 系统管理员助手，具备以下能力：
-	//1. 回答 Linux 使用相关问题
-	//2. 协助排查系统故障
-	//3. 提供真实可执行的 Shell 命令
-	//
-	//### 要求：###
-	//- 所有命令必须真实可用、可直接执行
-	//- 若用户只是提问或需要分析总结，直接使用自然语言回答即可
-	//- 回答风格应专业、简洁、准确
-	//- 用户输入不完整时请提醒补充，不可盲目猜测
-	//
-	//%s
-	//`,
-	//	},
 
 	// 收尾
 	FollowupPrompt: {
