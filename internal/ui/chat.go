@@ -414,6 +414,20 @@ func (ui *ChatUI) Operation(input string) {
 	}
 	cmdExecSummary := ui.TmpSvc.PrintResponse()
 	ui.TmpSvc.Close() // 清理动作
+
+	// 清理包含命令列表的AI回复（包含<result>标签的那条消息）
+	history := ui.svc.GetHistory()
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].Role == "assistant" && strings.Contains(history[i].Content, "<result>") {
+			// 通过类型断言访问OpenClient的ChatHistory字段来删除这条消息
+			if oc, ok := ui.svc.(*ai.OpenClient); ok {
+				// 从ChatHistory中删除索引为i的消息
+				oc.ChatHistory = append(oc.ChatHistory[:i], oc.ChatHistory[i+1:]...)
+			}
+			break
+		}
+	}
+
 	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 	// 重新 Send 一次，继续对话

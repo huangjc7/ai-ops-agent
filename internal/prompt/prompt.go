@@ -31,7 +31,7 @@ var Templates = map[string]PromptTemplate{
 	// 收尾
 	FollowupPrompt: {
 		User: `
-我已经执行了你提供的命令，并在<output>标签对中并获得如下结果：
+我已经执行了命令，并在<output>标签对中并获得如下结果：
 <output>
 %s
 </output>
