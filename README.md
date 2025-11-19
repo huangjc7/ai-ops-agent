@@ -6,11 +6,13 @@
 [![asciicast](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM.svg)](https://asciinema.org/a/xVjkj1DYvElhxT2fTmQVehGSM)
 
 # 环境变量
-| 变量名          | 描述                 | 默认值   |
-|------------|--------------------|-------|
-| `BASE_URL` | 模型调用API地址          | `nil` |
-| `API_KEY` | 调认证APIKEY          | `nil` |
+| 变量名          | 描述                | 默认值  |
+|------------|-------------------|------|
+| `BASE_URL` | 模型调用API地址         | `nil` |
+| `API_KEY` | 调认证APIKEY         | `nil` |
 | `MODEL` | 模型名称，如"ChatGPT-4o" | `nil` |
+| `CONTINUE_COUNT` | 循环处理次数            | `5`  |
+| `AGENT_CONTINUE_MODE` |是否启用多轮处理模式，yes开启| `no` |
 
 # 使用方式
 ```shell
@@ -36,5 +38,7 @@ $ ./ai-ops-agent
 - 解决上下文长度问题，会话管理 -- 长期计划
 - 解决全局共享单个会话历史，采用多上下文进行异步协同处理
 - 允许用户上传自定义tool、mcp
+- 国际版支持
+- ~~支持多轮处理修复~~
 - ~~在线更新更新版本能力~~
 - ~~优化各类代码边界，日志收集，初始化信息没有填写，启动提示(优先)~~

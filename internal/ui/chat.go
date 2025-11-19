@@ -4,11 +4,13 @@ import (
 	"ai-ops-agent/internal/executor"
 	"ai-ops-agent/internal/prompt"
 	"ai-ops-agent/pkg/ai"
+	"ai-ops-agent/pkg/env"
 	"ai-ops-agent/pkg/shell"
 	"ai-ops-agent/pkg/system"
 	"ai-ops-agent/pkg/text"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,7 +35,10 @@ type ChatUI struct {
 	model   string
 	apiKey  string
 
-	repairCount int
+	repairCount int // 递归计数器
+
+	continueEnabled bool // 开关持续Ai推理模式
+
 }
 
 func max(a, b int) int {
@@ -49,7 +54,7 @@ func (ui *ChatUI) printWelcomeSlowly(text string) {
 		for _, c := range text {
 			ui.chatView.Write([]byte(string(c)))
 			ui.app.Draw()
-			time.Sleep(30 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 		}
 		ui.chatView.Write([]byte("\n"))
 	}()
@@ -158,6 +163,11 @@ func NewChatUI() *ChatUI {
 		return event
 	})
 	ui.rootLayout = layout
+
+	if env.Get("AGENT_CONTINUE_MODE", "no") == "yes" {
+		ui.continueEnabled = true
+	}
+
 	return ui
 }
 
@@ -309,6 +319,9 @@ func (ui *ChatUI) Ask(input string) {
 }
 
 func (ui *ChatUI) Operation(input string) {
+
+	defer func() { ui.repairCount = 0 }()
+
 	if ui.err = ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
 		AddUserRoleSession(input).Send(); ui.err != nil {
 		ui.chatView.Write([]byte("[red]\n[错误] " + ui.err.Error() + "[-]\n"))
@@ -405,18 +418,39 @@ func (ui *ChatUI) Operation(input string) {
 
 	// 重新 Send 一次，继续对话
 	var respBuilder strings.Builder
+	ui.chatView.Write([]byte("[green]AI:[-] "))
 	ui.svc.SendStream(func(token string) {
 		ui.chatView.Write([]byte(token))
 		respBuilder.WriteString(token)
 	})
 
-	if strings.Contains(respBuilder.String(), "<continue>") {
+	if !ui.continueEnabled {
 		ui.chatView.Write([]byte("\n"))
-		ui.Operation(prompt.ContinuePrompt)
+		return
+	}
+
+	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "5")); ui.repairCount > count-1 {
+		ui.chatView.Write([]byte("\n"))
+		return
+	}
+
+	contiuneAi := ai.GetAIModel().TextGenTextModelClient
+
+	contiuneAi.AddUserRoleSession(fmt.Sprintf(
+		prompt.Templates[prompt.ShouldContinuePrompt].User,
+		respBuilder.String(),
+	)).Send()
+	contiuneAiReply := contiuneAi.PrintResponse()
+	contiuneAi.Close()
+
+	if strings.Contains(contiuneAiReply, "<continue>") {
+		ui.chatView.Write([]byte("\n"))
 		ui.repairCount++ // 防止重复死循环
+		ui.Operation(prompt.ContinuePrompt)
 	}
 
 	ui.chatView.Write([]byte("\n"))
+
 	return
 
 }
@@ -424,10 +458,16 @@ func (ui *ChatUI) Operation(input string) {
 // Run 启动 UI 应用
 func (ui *ChatUI) Run() error {
 
+	modeStr := "关闭"
+	if ui.continueEnabled {
+		modeStr = "启用"
+	}
+
 	go func() {
 		ui.printWelcomeSlowly(
 			"[blue]欢迎使用 Linux AI 助手！输入问题并按 Enter 开始对话[-]\n" +
-				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]")
+				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]" + "\n\n" +
+				"[blue]多轮处理模式: " + modeStr)
 		ui.app.Draw()
 	}()
 

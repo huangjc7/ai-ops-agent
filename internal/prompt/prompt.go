@@ -1,12 +1,13 @@
 package prompt
 
 const (
-	InitPrompt     = "InitPrompt"     // 初始化提示
-	FollowupPrompt = "FollowupPrompt" // 二次执行提示
-	Ask            = "Ask"            // 基本回答提示
-	Class          = "Class"          // 分类提示
-	Operation      = "Operation"      // 操作提示
-	Summary        = "Summary"
+	InitPrompt           = "InitPrompt"     // 初始化提示
+	FollowupPrompt       = "FollowupPrompt" // 二次执行提示
+	Ask                  = "Ask"            // 基本回答提示
+	Class                = "Class"          // 分类提示
+	Operation            = "Operation"      // 操作提示
+	Summary              = "Summary"
+	ShouldContinuePrompt = "ShouldContinuePrompt"
 )
 
 // ComprehensivePrompt 新增的大而全 Prompt
@@ -16,6 +17,16 @@ const (
 )
 
 var Templates = map[string]PromptTemplate{
+
+	ShouldContinuePrompt: {
+		User: `
+## 用户要求
+%s
+## 处理结论
+%s 
+## 要求
+若你认为上述处理结论没有解决掉用户需求，还需进一步排查，可以直接给出<continue>关键字即可，不需要说其他过多内容解释。如果解决问题了或者出现不可抗力因素问题请务必不要输出<continue>关键字。`,
+	},
 
 	// 收尾
 	FollowupPrompt: {
@@ -32,7 +43,6 @@ var Templates = map[string]PromptTemplate{
 - 不要再次输出 <result>，这不是执行阶段
 - 使用自然语言即可，不可以使用markdown格式
 - 请保持简洁、专业，不要进行客套或寒暄
-- 若你认为没有解决掉用户需求，还需进一步排查，可以直接给出<continue>关键字即可，不需要说其他过多内容解释。
 `,
 	},
 
