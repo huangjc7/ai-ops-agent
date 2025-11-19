@@ -11,7 +11,9 @@ const (
 
 // ComprehensivePrompt 新增的大而全 Prompt
 
-const ContinuePrompt = "帮我继续处理上述问题"
+const (
+	ContinuePrompt = "请继续帮我解决上述问题"
+)
 
 var Templates = map[string]PromptTemplate{
 
@@ -25,12 +27,12 @@ var Templates = map[string]PromptTemplate{
 
 请你基于这些结果进行判断或总结：
 - 若执行结果已达成用户目的，请给出简洁总结
-- 若还需进一步排查，请明确指出需要的操作
 - 若存在报错，请解释可能原因并建议修复命令
 - 不要重复上一次的命令
 - 不要再次输出 <result>，这不是执行阶段
 - 使用自然语言即可，不可以使用markdown格式
-- 请保持简洁、专业，不要进行客套或寒暄。
+- 请保持简洁、专业，不要进行客套或寒暄
+- 若你认为没有解决掉用户需求，还需进一步排查，可以直接给出<continue>关键字即可，不需要说其他过多内容解释。
 `,
 	},
 

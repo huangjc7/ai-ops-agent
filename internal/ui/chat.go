@@ -32,6 +32,8 @@ type ChatUI struct {
 	baseURL string
 	model   string
 	apiKey  string
+
+	repairCount int
 }
 
 func max(a, b int) int {
@@ -409,8 +411,11 @@ func (ui *ChatUI) Operation(input string) {
 	})
 
 	if strings.Contains(respBuilder.String(), "<continue>") {
+		ui.chatView.Write([]byte("\n"))
 		ui.Operation(prompt.ContinuePrompt)
+		ui.repairCount++ // 防止重复死循环
 	}
+
 	ui.chatView.Write([]byte("\n"))
 	return
 
