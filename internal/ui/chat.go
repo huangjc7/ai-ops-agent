@@ -415,18 +415,9 @@ func (ui *ChatUI) Operation(input string) {
 	cmdExecSummary := ui.TmpSvc.PrintResponse()
 	ui.TmpSvc.Close() // 清理动作
 
-	// 清理包含命令列表的AI回复（包含<result>标签的那条消息）
-	history := ui.svc.GetHistory()
-	for i := len(history) - 1; i >= 0; i-- {
-		if history[i].Role == "assistant" && strings.Contains(history[i].Content, "<result>") {
-			// 通过类型断言访问OpenClient的ChatHistory字段来删除这条消息
-			if oc, ok := ui.svc.(*ai.OpenClient); ok {
-				// 从ChatHistory中删除索引为i的消息
-				oc.ChatHistory = append(oc.ChatHistory[:i], oc.ChatHistory[i+1:]...)
-			}
-			break
-		}
-	}
+	// 清理包含命令列表的AI回复（包含<result>标签的消息）
+	// 删除历史中所有包含<result>的消息，但保留最新的一条
+	ui.svc.RemoveOldResultMessages()
 
 	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
@@ -448,16 +439,7 @@ func (ui *ChatUI) Operation(input string) {
 		return
 	}
 
-	contiuneAi := ai.GetAIModel().TextGenTextModelClient
-
-	contiuneAi.AddUserRoleSession(fmt.Sprintf(
-		prompt.Templates[prompt.ShouldContinuePrompt].User,
-		respBuilder.String(),
-	)).Send()
-	contiuneAiReply := contiuneAi.PrintResponse()
-	contiuneAi.Close()
-
-	if strings.Contains(contiuneAiReply, "<continue>") {
+	if strings.Contains(respBuilder.String(), "<continue>") {
 		ui.chatView.Write([]byte("\n"))
 		ui.repairCount++ // 防止重复死循环
 		ui.Operation(prompt.ContinuePrompt)

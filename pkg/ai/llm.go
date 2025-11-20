@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -30,6 +31,7 @@ type Controller interface {
 	GetHistory() []openai.ChatCompletionMessage
 	AddUserRoleMultiContent(contents []openai.ChatMessagePart) *OpenClient // 构造多模态内容
 	SendStream(onToken func(string)) error                                 //流式输出
+	RemoveOldResultMessages()                                              // 删除历史中所有包含<result>的消息，但保留最新的一条
 }
 
 func NewAIClient(cfg *Config) Controller {
@@ -245,4 +247,39 @@ func (oc *OpenClient) PrintFullResponse() string {
 		return "序列化响应失败: " + err.Error()
 	}
 	return string(bytes)
+}
+
+// RemoveOldResultMessages 删除历史中所有包含<result>的消息，但保留最新的一条
+func (oc *OpenClient) RemoveOldResultMessages() {
+	if len(oc.ChatHistory) == 0 {
+		return
+	}
+
+	// 从后往前找到最新的一条包含<result>的消息索引
+	lastResultIndex := -1
+	for i := len(oc.ChatHistory) - 1; i >= 0; i-- {
+		if oc.ChatHistory[i].Role == openai.ChatMessageRoleAssistant &&
+			strings.Contains(oc.ChatHistory[i].Content, "<result>") {
+			if lastResultIndex == -1 {
+				lastResultIndex = i // 记录最新的一条，保留它
+			}
+		}
+	}
+
+	// 如果没有找到包含<result>的消息，直接返回
+	if lastResultIndex == -1 {
+		return
+	}
+
+	// 从后往前删除所有包含<result>的消息（除了最新的一条）
+	// 注意：从后往前删除可以避免索引变化的问题
+	for i := len(oc.ChatHistory) - 1; i >= 0; i-- {
+		if i != lastResultIndex && // 不是最新的一条
+			i < len(oc.ChatHistory) &&
+			oc.ChatHistory[i].Role == openai.ChatMessageRoleAssistant &&
+			strings.Contains(oc.ChatHistory[i].Content, "<result>") {
+			// 删除这条消息
+			oc.ChatHistory = append(oc.ChatHistory[:i], oc.ChatHistory[i+1:]...)
+		}
+	}
 }
