@@ -41,6 +41,9 @@ func GetSystemInfo() string {
 	u, _ := user.Current()
 	b.WriteString(fmt.Sprintf("当前登录用户 %s \n", u.Username))
 
+	// 当前目录
+	wd, _ := os.Getwd()
+	b.WriteString(fmt.Sprintf("当前目录位置 %s \n", wd))
 	return b.String()
 }
 

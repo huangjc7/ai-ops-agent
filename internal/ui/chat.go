@@ -408,18 +408,21 @@ func (ui *ChatUI) Operation(input string) {
 		}
 	}
 
-	if ui.err = ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send(); ui.err != nil {
+	ui.err = ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send()
+	//ui.chatView.Write([]byte(ui.TmpSvc.PrintResponse()))
+	if ui.err != nil {
 		ui.chatView.Write([]byte("[red][错误] 总结请求失败: " + ui.err.Error() + "[-]\n"))
 		return
 	}
+
+	// 提炼描述
 	cmdExecSummary := ui.TmpSvc.PrintResponse()
 	ui.TmpSvc.Close() // 清理动作
+	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 	// 清理包含命令列表的AI回复（包含<result>标签的消息）
 	// 删除历史中所有包含<result>的消息，但保留最新的一条
 	ui.svc.RemoveOldResultMessages()
-
-	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 	// 重新 Send 一次，继续对话
 	var respBuilder strings.Builder
