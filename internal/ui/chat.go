@@ -408,9 +408,9 @@ func (ui *ChatUI) Operation(input string) {
 		}
 	}
 
-	ui.err = ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send()
+	err := ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send()
 	//ui.chatView.Write([]byte(ui.TmpSvc.PrintResponse()))
-	if ui.err != nil {
+	if err != nil {
 		ui.chatView.Write([]byte("[red][错误] 总结请求失败: " + ui.err.Error() + "[-]\n"))
 		return
 	}
@@ -445,7 +445,8 @@ func (ui *ChatUI) Operation(input string) {
 	if strings.Contains(respBuilder.String(), "<continue>") {
 		ui.chatView.Write([]byte("\n"))
 		ui.repairCount++ // 防止重复死循环
-		ui.Operation(prompt.ContinuePrompt)
+		//ui.Operation(prompt.ContinuePrompt)
+		ui.Operation(strings.ReplaceAll(respBuilder.String(), "<continue>", ""))
 	}
 
 	ui.chatView.Write([]byte("\n"))
