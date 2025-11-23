@@ -21,13 +21,14 @@ type OpenClient struct {
 }
 
 type Controller interface {
-	Send() error                                   // 请求AI
+	Send() (string, error)                         // 请求AI，返回AI回复和错误
 	AddUserRoleSession(content string) *OpenClient // 添加对话到历史记录中
 	AddSystemRoleSession(content string) *OpenClient
 	AddSystemRoleSessionOne(content string) *OpenClient // 唯一添加 SystemRole，会先删除已有的
-	Close()                                             // 清空所有历史会话
-	PrintResponse() string                              // 打印最新AI回复
-	PrintHistory()                                      // 打印整个历史对话
+	AddCustomRoleSession(role string, content string)
+	Close()                // 清空所有历史会话
+	PrintResponse() string // 打印最新AI回复
+	PrintHistory()         // 打印整个历史对话
 	GetHistory() []openai.ChatCompletionMessage
 	AddUserRoleMultiContent(contents []openai.ChatMessagePart) *OpenClient // 构造多模态内容
 	SendStream(onToken func(string)) error                                 //流式输出
@@ -164,7 +165,7 @@ func (oc *OpenClient) SendStream(onToken func(string)) error {
 	}
 	defer stream.Close()
 
-	var fullReply string
+	//var fullReply string
 
 	for {
 		resp, err := stream.Recv()
@@ -173,18 +174,18 @@ func (oc *OpenClient) SendStream(onToken func(string)) error {
 		}
 		token := resp.Choices[0].Delta.Content
 		if token != "" {
-			fullReply += token
+			//fullReply += token
 			onToken(token) // 逐 token 回调
 		}
 	}
 
-	// 追加完整回复到历史
-	oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, fullReply)
+	//// 追加完整回复到历史
+	//oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, fullReply)
 
 	return nil
 }
 
-func (oc *OpenClient) Send() error {
+func (oc *OpenClient) Send() (string, error) {
 	//裁剪对话历史 上下文问题比较头疼， 考虑后面版本处理
 	//ChatHistory = trimChatHistory(ChatHistory)
 
@@ -194,26 +195,42 @@ func (oc *OpenClient) Send() error {
 		Messages: oc.ChatHistory,
 		Stream:   false,
 	})
-	oc.RawResponse = &resp
 	if err != nil {
-		log.Println("请求Ai失败:", err)
-		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, "请求 AI 失败: "+err.Error())
-		return err
+		// 构建详细的错误信息
+		errDetail := err.Error()
+		var detailedErr error
+
+		// 检查是否是 openai APIError
+		if apiErr, ok := err.(*openai.APIError); ok {
+			detailedErr = fmt.Errorf("AI请求失败 (模型: %s, 消息数: %d) - API错误[类型:%s, 消息:%s, 参数:%s, 错误码:%s]: %w",
+				oc.model, len(oc.ChatHistory), apiErr.Type, apiErr.Message, apiErr.Param, apiErr.Code, err)
+		} else if strings.Contains(errDetail, "EOF") {
+			// 针对 EOF 错误提供更友好的提示
+			detailedErr = fmt.Errorf("AI请求失败 (模型: %s, 消息数: %d) - 连接中断(EOF): 可能是网络问题、服务器关闭连接或请求超时。原始错误: %w",
+				oc.model, len(oc.ChatHistory), err)
+		} else {
+			// 其他错误
+			detailedErr = fmt.Errorf("AI请求失败 (模型: %s, 消息数: %d): %w", oc.model, len(oc.ChatHistory), err)
+		}
+
+		log.Println("请求Ai失败:", detailedErr)
+		return "", detailedErr
 	}
+
+	oc.RawResponse = &resp
 
 	// 如果 AI 没有调用 Function，直接返回回答
 	if len(resp.Choices) == 0 {
 		err := fmt.Errorf("请求 AI 成功但未返回任何回复")
 		log.Println(err.Error())
-		oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, err.Error())
-		return err
+		return "", err
 	}
+
+	// 提取 AI 回复内容
 	aiReply := resp.Choices[0].Message.Content
+	// 注意：不再自动追加 AI 回复到历史对话，由调用者决定是否添加
 
-	// 追加 AI 回复到历史对话
-	oc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, aiReply)
-
-	return nil
+	return aiReply, nil
 }
 
 func (oc *OpenClient) Close() {

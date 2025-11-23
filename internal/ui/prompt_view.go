@@ -68,7 +68,7 @@ func (cp *ConfirmationPrompt) Confirm(opts ConfirmOptions) bool {
 
 	cancelMsg := opts.CancelMessage
 	if cancelMsg == "" {
-		cancelMsg = "[yellow]用户已取消该命令[-]\n"
+		cancelMsg = "[green]用户已取消该命令[-]\n"
 	}
 
 	timeoutMsg := opts.TimeoutMessage

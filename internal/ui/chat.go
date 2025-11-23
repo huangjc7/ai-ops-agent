@@ -16,6 +16,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/sashabaranov/go-openai"
 )
 
 type ChatUI struct {
@@ -271,11 +272,11 @@ func (ui *ChatUI) AIA(input string) {
 	}
 
 	// 判断类型变化并注入初始化 prompt
-	if ui.err = ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send(); ui.err != nil {
+	replyAi, err := ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send()
+	if err != nil {
 		ui.chatView.Write([]byte("[red]分类请求失败: " + ui.err.Error() + "[-]\n"))
 		return
 	}
-	replyAi := ui.classSvc.PrintResponse()
 	ui.classSvc.Close()
 
 	var inputClass = prompt.InputClassResult
@@ -297,7 +298,7 @@ func (ui *ChatUI) AIA(input string) {
 	case strings.ToLower(prompt.Operation):
 		ui.Operation(input)
 	default:
-		ui.chatView.Write([]byte("[debug]: 没有匹配到类型"))
+		ui.chatView.Write([]byte("[debug][警告]: 没有匹配到类型" + "[-]\n"))
 	}
 
 }
@@ -321,24 +322,32 @@ func (ui *ChatUI) Ask(input string) {
 func (ui *ChatUI) Operation(input string) {
 
 	defer func() { ui.repairCount = 0 }()
+	var cmdJsonReply string
+	var err error
 
-	if ui.err = ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
-		AddUserRoleSession(input).Send(); ui.err != nil {
+	aiC := ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo()))
+
+	if input == "" {
+		cmdJsonReply, err = aiC.Send()
+	} else {
+		cmdJsonReply, err = aiC.AddUserRoleSession(input).Send()
+	}
+
+	if err != nil {
 		ui.chatView.Write([]byte("[red]\n[错误] " + ui.err.Error() + "[-]\n"))
 		return
 	}
-
-	// 获取最新的完整回复
-	reply := ui.svc.PrintResponse()
+	// 执行命令添加对话历史，方便Ai回溯
+	ui.svc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, cmdJsonReply)
 
 	// 如果回复包含 <result> 标签，尝试解析并执行命令
 	var commands prompt.SuggestionList
-	if !strings.Contains(reply, "<result>") {
+	if !strings.Contains(cmdJsonReply, "<result>") {
 		ui.chatView.Write([]byte("[red][错误] 没有解析<result>标签对，请联系开发"))
 		return
 	}
 
-	resultDatas := text.ExtractAllResults(reply)
+	resultDatas := text.ExtractAllResults(cmdJsonReply)
 
 	var fmtResult string
 
@@ -408,29 +417,23 @@ func (ui *ChatUI) Operation(input string) {
 		}
 	}
 
-	err := ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send()
-	//ui.chatView.Write([]byte(ui.TmpSvc.PrintResponse()))
+	// 提炼描述
+	cmdExecSummary, err := ui.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Summary].User, fmtResult)).Send()
 	if err != nil {
-		ui.chatView.Write([]byte("[red][错误] 总结请求失败: " + ui.err.Error() + "[-]\n"))
+		ui.chatView.Write([]byte("[red][错误] 总结请求失败: " + err.Error() + "[-]\n"))
 		return
 	}
-
-	// 提炼描述
-	cmdExecSummary := ui.TmpSvc.PrintResponse()
 	ui.TmpSvc.Close() // 清理动作
-	ui.svc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.FollowupPrompt].User, cmdExecSummary))
 
 	// 清理包含命令列表的AI回复（包含<result>标签的消息）
 	// 删除历史中所有包含<result>的消息，但保留最新的一条
 	ui.svc.RemoveOldResultMessages()
 
-	// 重新 Send 一次，继续对话
-	var respBuilder strings.Builder
-	ui.chatView.Write([]byte("[green]AI:[-] "))
-	ui.svc.SendStream(func(token string) {
-		ui.chatView.Write([]byte(token))
-		respBuilder.WriteString(token)
-	})
+	//重新 Send 一次，继续对话<continue> and not continue
+	summaryReply, err := ui.svc.AddUserRoleSession(cmdExecSummary).Send()
+	if err != nil {
+		ui.chatView.Write([]byte("[red][错误] 失败" + err.Error() + "[-]\n"))
+	}
 
 	if !ui.continueEnabled {
 		ui.chatView.Write([]byte("\n"))
@@ -438,15 +441,22 @@ func (ui *ChatUI) Operation(input string) {
 	}
 
 	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "5")); ui.repairCount > count-1 {
-		ui.chatView.Write([]byte("\n"))
+		//ui.chatView.Write([]byte("[debug][-] 处理轮次达到最大"))
+		ui.chatView.Write([]byte("[green]AI:[-] " + cmdExecSummary))
 		return
 	}
 
-	if strings.Contains(respBuilder.String(), "<continue>") {
-		ui.chatView.Write([]byte("\n"))
-		ui.repairCount++ // 防止重复死循环
-		//ui.Operation(prompt.ContinuePrompt)
-		ui.Operation(strings.ReplaceAll(respBuilder.String(), "<continue>", ""))
+	// 继续
+	if strings.Contains(summaryReply, "<continue>") {
+		// 给用户展示结论
+		ui.chatView.Write([]byte("\n[debug]" + cmdExecSummary + "[-]\n\n"))
+		ui.repairCount++
+		ui.Operation("请继续解决上述出现所有的问题")
+	} else {
+		ui.chatView.Write([]byte("[green]AI:[-] "))
+		ui.svc.SendStream(func(token string) {
+			ui.chatView.Write([]byte(token))
+		})
 	}
 
 	ui.chatView.Write([]byte("\n"))
