@@ -165,7 +165,7 @@ func NewChatUI() *ChatUI {
 	})
 	ui.rootLayout = layout
 
-	if env.Get("AGENT_CONTINUE_MODE", "no") == "yes" {
+	if env.Get("AGENT_CONTINUE_MODE", "yes") == "yes" {
 		ui.continueEnabled = true
 	}
 
