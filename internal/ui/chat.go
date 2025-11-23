@@ -274,7 +274,7 @@ func (ui *ChatUI) AIA(input string) {
 	// 判断类型变化并注入初始化 prompt
 	replyAi, err := ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.Templates[prompt.Class].User, input)).Send()
 	if err != nil {
-		ui.chatView.Write([]byte("[red]分类请求失败: " + ui.err.Error() + "[-]\n"))
+		ui.chatView.Write([]byte("[red]分类请求失败: " + err.Error() + "[-]\n"))
 		return
 	}
 	ui.classSvc.Close()
@@ -312,7 +312,7 @@ func (ui *ChatUI) Ask(input string) {
 		})
 
 	if err != nil {
-		ui.chatView.Write([]byte("[red]\n[错误] " + ui.err.Error() + "[-]\n"))
+		ui.chatView.Write([]byte("[red]\n[错误] " + err.Error() + "[-]\n"))
 		return
 	}
 
@@ -334,7 +334,7 @@ func (ui *ChatUI) Operation(input string) {
 	}
 
 	if err != nil {
-		ui.chatView.Write([]byte("[red]\n[错误] " + ui.err.Error() + "[-]\n"))
+		ui.chatView.Write([]byte("[red]\n[错误] " + err.Error() + "[-]\n"))
 		return
 	}
 	// 执行命令添加对话历史，方便Ai回溯
@@ -429,11 +429,12 @@ func (ui *ChatUI) Operation(input string) {
 	// 删除历史中所有包含<result>的消息，但保留最新的一条
 	ui.svc.RemoveOldResultMessages()
 
-	//重新 Send 一次，继续对话<continue> and not continue
-	summaryReply, err := ui.svc.AddUserRoleSession(cmdExecSummary).Send()
+	//重新 Send 一次，继续对话
+	summaryReply, err := ui.svc.AddUserRoleSession(cmdExecSummary + "请你判断一下给出总结或者<continue>").Send()
 	if err != nil {
 		ui.chatView.Write([]byte("[red][错误] 失败" + err.Error() + "[-]\n"))
 	}
+	//ui.chatView.Write([]byte("[debug]summary: " + summaryReply + "[-]\n"))
 
 	if !ui.continueEnabled {
 		ui.chatView.Write([]byte("\n"))
@@ -441,8 +442,15 @@ func (ui *ChatUI) Operation(input string) {
 	}
 
 	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "5")); ui.repairCount > count-1 {
-		//ui.chatView.Write([]byte("[debug][-] 处理轮次达到最大"))
-		ui.chatView.Write([]byte("[green]AI:[-] " + cmdExecSummary))
+		ui.chatView.Write([]byte("[debug]处理轮次达到最大" + "[-]\n"))
+
+		ui.chatView.Write([]byte("[green]AI:[-] "))
+
+		// TODO：后续可基于总结，来清理总结之前的历史对话，降低上下文负担
+		ui.svc.AddUserRoleSession("请你基于上述对话历史做一个总结，总结一下主体目标 + 目前操作进度和建议").
+			SendStream(func(token string) {
+				ui.chatView.Write([]byte(token))
+			})
 		return
 	}
 
@@ -451,7 +459,7 @@ func (ui *ChatUI) Operation(input string) {
 		// 给用户展示结论
 		ui.chatView.Write([]byte("\n[debug]" + cmdExecSummary + "[-]\n\n"))
 		ui.repairCount++
-		ui.Operation("请继续解决上述出现所有的问题")
+		ui.Operation("请生成命令来继续解决上述出现所有的问题")
 	} else {
 		ui.chatView.Write([]byte("[green]AI:[-] "))
 		ui.svc.SendStream(func(token string) {
