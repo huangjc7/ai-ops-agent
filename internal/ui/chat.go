@@ -325,31 +325,50 @@ func (ui *ChatUI) Operation(input string) {
 	var cmdJsonReply string
 	var err error
 
-	aiC := ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo()))
+	ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo()))
 
 	if input == "" {
-		cmdJsonReply, err = aiC.Send()
+		cmdJsonReply, err = ui.svc.
+			AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
+			Send()
 	} else {
-		cmdJsonReply, err = aiC.AddUserRoleSession(input).Send()
+		cmdJsonReply, err = ui.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.Templates[prompt.Operation].System, system.GetSystemInfo())).
+			AddUserRoleSession(input).
+			Send()
 	}
 
 	if err != nil {
 		ui.chatView.Write([]byte("[red]\n[错误] " + err.Error() + "[-]\n"))
 		return
 	}
+
+	var retryCount int
+
+	for {
+
+		if retryCount > 2 {
+			break
+		}
+
+		// 判断
+		if !strings.Contains(cmdJsonReply, "<result>") {
+			cmdJsonReply, err = ui.svc.AddUserRoleSession("请重新生成一组命令并且使用<result>标签对包裹").Send()
+			if err != nil {
+				ui.chatView.Write([]byte("[red][错误] " + err.Error() + "[-]\n"))
+				return
+			}
+		}
+
+		retryCount++
+	}
+
 	// 执行命令添加对话历史，方便Ai回溯
 	ui.svc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, cmdJsonReply)
-
-	// 如果回复包含 <result> 标签，尝试解析并执行命令
-	var commands prompt.SuggestionList
-	if !strings.Contains(cmdJsonReply, "<result>") {
-		ui.chatView.Write([]byte("[red][错误] 没有解析<result>标签对，请联系开发"))
-		return
-	}
 
 	resultDatas := text.ExtractAllResults(cmdJsonReply)
 
 	var fmtResult string
+	var commands prompt.SuggestionList
 
 	// 防止AI抽风 多给了<result>标签对
 	for _, resultData := range resultDatas {
@@ -430,7 +449,7 @@ func (ui *ChatUI) Operation(input string) {
 	ui.svc.RemoveOldResultMessages()
 
 	//重新 Send 一次，继续对话
-	summaryReply, err := ui.svc.AddUserRoleSession(cmdExecSummary + "请你判断一下给出总结或者<continue>").Send()
+	summaryReply, err := ui.svc.AddUserRoleSession(cmdExecSummary + "\n请你判断一下是否需要继续处理用户的问题，需要则输出<continue>即可，不需要就直接进行总结了").Send()
 	if err != nil {
 		ui.chatView.Write([]byte("[red][错误] 失败" + err.Error() + "[-]\n"))
 	}
@@ -455,11 +474,11 @@ func (ui *ChatUI) Operation(input string) {
 	}
 
 	// 继续
-	if strings.Contains(summaryReply, "<continue>") {
+	if strings.Contains(summaryReply, "<continue>") || strings.Contains(summaryReply, "<result>") {
 		// 给用户展示结论
 		ui.chatView.Write([]byte("\n[debug]" + cmdExecSummary + "[-]\n\n"))
 		ui.repairCount++
-		ui.Operation("请生成命令来继续解决上述出现所有的问题")
+		ui.Operation("请生产新的命令组来继续解决上述出现所有的问题")
 	} else {
 		ui.chatView.Write([]byte("[green]AI:[-] "))
 		ui.svc.SendStream(func(token string) {

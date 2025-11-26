@@ -103,7 +103,6 @@ var Templates = map[string]PromptTemplate{
 - 禁止任何占位符（如 <filename>、<path>、\d+）
 - 禁止任何交互式命令（如 vi、nano、passwd、top 等）
 - 不能输出任何额外说明、文本、标点，只能输出 <result> 包裹的 JSON
-
 格式必须如下：
 
 <result>
@@ -124,7 +123,7 @@ var Templates = map[string]PromptTemplate{
 你必须按以下规则回应：
 
 ### 1. 若你判断问题没有解决
-你必须只输出：<continue>，不能输出其他任何内容，不能解释，不能附加文本。
+你必须只输出：<continue>，不能输出其他任何内容，命令，不能解释，不能附加文本。
 
 ### 2. 若问题已经解决，或无法继续（不可抗力）
 你必须输出问题总结，包括：
