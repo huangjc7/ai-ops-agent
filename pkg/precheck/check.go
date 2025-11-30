@@ -2,6 +2,7 @@ package precheck
 
 import (
 	"ai-ops-agent/internal/version"
+	"ai-ops-agent/pkg/i18n"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,15 +13,15 @@ import (
 
 func CheckVar() error {
 	if os.Getenv("BASE_URL") == "" {
-		return fmt.Errorf("没有配置BASE_URL环境变量")
+		return fmt.Errorf(i18n.T("ErrBaseUrlMissing"))
 	}
 
 	if os.Getenv("MODEL") == "" {
-		return fmt.Errorf("没有配置MODEL环境变量")
+		return fmt.Errorf(i18n.T("ErrModelMissing"))
 	}
 
 	if os.Getenv("API_KEY") == "" {
-		return fmt.Errorf("没有配置API_KEY环境变量")
+		return fmt.Errorf(i18n.T("ErrApiKeyMissing"))
 	}
 
 	return nil

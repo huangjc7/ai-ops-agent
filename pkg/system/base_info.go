@@ -1,6 +1,7 @@
 package system
 
 import (
+	"ai-ops-agent/pkg/i18n"
 	"bytes"
 	"fmt"
 	"os"
@@ -13,15 +14,15 @@ import (
 func GetSystemInfo() string {
 	var b bytes.Buffer
 
-	b.WriteString("### 系统信息 ###\n")
+	b.WriteString(i18n.T("SysInfoTitle"))
 
 	// 操作系统和架构
-	b.WriteString(fmt.Sprintf("操作系统: %s\n", runtime.GOOS))
-	b.WriteString(fmt.Sprintf("架构: %s\n", runtime.GOARCH))
+	b.WriteString(fmt.Sprintf(i18n.T("SysOS"), runtime.GOOS))
+	b.WriteString(fmt.Sprintf(i18n.T("SysArch"), runtime.GOARCH))
 
 	// 主机名
 	if hostname, err := os.Hostname(); err == nil {
-		b.WriteString(fmt.Sprintf("主机名: %s\n", hostname))
+		b.WriteString(fmt.Sprintf(i18n.T("SysHostname"), hostname))
 	}
 
 	// 尝试读取 /etc/os-release 获取 Linux 发行版信息（仅限 Linux）
@@ -29,21 +30,21 @@ func GetSystemInfo() string {
 		if data, err := os.ReadFile("/etc/os-release"); err == nil {
 			osRelease := parseOSRelease(string(data))
 			if prettyName, ok := osRelease["PRETTY_NAME"]; ok {
-				b.WriteString(fmt.Sprintf("发行版: %s\n", prettyName))
+				b.WriteString(fmt.Sprintf(i18n.T("SysDistro"), prettyName))
 			}
 		}
 	}
 
 	// CPU 核心数
-	b.WriteString(fmt.Sprintf("CPU 核心数: %d\n", runtime.NumCPU()))
+	b.WriteString(fmt.Sprintf(i18n.T("SysCPU"), runtime.NumCPU()))
 	// Go 版本
-	b.WriteString(fmt.Sprintf("Go版本: %s\n", runtime.Version()))
+	b.WriteString(fmt.Sprintf(i18n.T("SysGoVer"), runtime.Version()))
 	u, _ := user.Current()
-	b.WriteString(fmt.Sprintf("当前登录用户 %s \n", u.Username))
+	b.WriteString(fmt.Sprintf(i18n.T("SysUser"), u.Username))
 
 	// 当前目录
 	wd, _ := os.Getwd()
-	b.WriteString(fmt.Sprintf("当前目录位置 %s \n", wd))
+	b.WriteString(fmt.Sprintf(i18n.T("SysPwd"), wd))
 	return b.String()
 }
 

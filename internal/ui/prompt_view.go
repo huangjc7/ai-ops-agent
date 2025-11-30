@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"ai-ops-agent/pkg/i18n"
 	"strings"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-const defaultConfirmLabel = "确认 (y/n): "
 const defaultTimeout = 300 * time.Second
 
 // ConfirmationPrompt 管理输入框的确认交互，复用标签、回调和超时逻辑
@@ -58,22 +58,22 @@ func (cp *ConfirmationPrompt) SetTimeout(timeout time.Duration) {
 func (cp *ConfirmationPrompt) Confirm(opts ConfirmOptions) bool {
 	label := opts.PromptLabel
 	if label == "" {
-		label = defaultConfirmLabel
+		label = i18n.T("DefaultConfirmLabel")
 	}
 
 	confirmMsg := opts.ConfirmMessage
 	if confirmMsg == "" {
-		confirmMsg = "[green]用户已确认执行命令[-]\n"
+		confirmMsg = i18n.T("ConfirmMsg")
 	}
 
 	cancelMsg := opts.CancelMessage
 	if cancelMsg == "" {
-		cancelMsg = "[green]用户已取消该命令[-]\n"
+		cancelMsg = i18n.T("CancelMsg")
 	}
 
 	timeoutMsg := opts.TimeoutMessage
 	if timeoutMsg == "" {
-		timeoutMsg = "\n[red]超时未确认，已跳过该命令[-]\n"
+		timeoutMsg = i18n.T("TimeoutMsg")
 	}
 
 	timeout := opts.Timeout
@@ -105,7 +105,7 @@ func (cp *ConfirmationPrompt) Confirm(opts ConfirmOptions) bool {
 				cp.output.Write([]byte(cancelMsg))
 				resultCh <- false
 			default:
-				cp.output.Write([]byte("[yellow]请输入 y 或 n[-]\n"))
+				cp.output.Write([]byte(i18n.T("InvalidInputMsg")))
 			}
 		})
 	})

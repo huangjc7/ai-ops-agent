@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"ai-ops-agent/pkg/i18n"
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
@@ -13,13 +14,13 @@ func (ui *ChatUI) PrintHelpInfo() {
 		SetWrap(false).
 		SetScrollable(true).
 		SetBorder(true).
-		SetTitle(" 帮助信息（按 Esc 返回）")
+		SetTitle(i18n.T("HelpTitle"))
 
-	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/h", "帮助信息")))
-	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/clear", "清除本次对话AI记忆")))
+	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/h", i18n.T("CmdHelp"))))
+	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "/clear", i18n.T("CmdClear"))))
 	helpView.Write([]byte(fmt.Sprintf("\n\n")))
-	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "快捷键", "")))
-	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "tab", "切换聚焦框")))
+	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", i18n.T("HeaderShortcuts"), "")))
+	helpView.Write([]byte(fmt.Sprintf("%-15s %s\n", "tab", i18n.T("ShortcutTab"))))
 
 	helpView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
