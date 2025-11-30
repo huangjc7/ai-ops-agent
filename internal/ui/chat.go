@@ -55,7 +55,7 @@ func (ui *ChatUI) printWelcomeSlowly(text string) {
 		for _, c := range text {
 			ui.chatView.Write([]byte(string(c)))
 			ui.app.Draw()
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
 		ui.chatView.Write([]byte("\n"))
 	}()
@@ -502,9 +502,14 @@ func (ui *ChatUI) Run() error {
 
 	go func() {
 		ui.printWelcomeSlowly(
-			"[blue]欢迎使用 Linux AI 助手！输入问题并按 Enter 开始对话[-]\n" +
-				"[blue]输入 /h 并按 Enter 可以进入帮助信息[-]" + "\n\n" +
-				"[blue]多轮处理模式: " + modeStr)
+			"[blue]欢迎使用 Linux AI 助手！我可以协助你处理各类运维相关任务。\n" +
+				"输入问题并按 Enter 即可开始对话\n" +
+				"例如，你可以尝试输入：" +
+				"帮我分析系统日志 " +
+				"或" +
+				" 部署一个 Nginx 容器。\n\n" +
+				"输入 /h 并按 Enter 可查看帮助信息\n" +
+				"多轮处理模式： " + modeStr + "[-]")
 		ui.app.Draw()
 	}()
 
