@@ -259,6 +259,22 @@ func (ui *ChatUI) AIA(input string) {
 
 	ui.chatView.Write([]byte("[green]AI:[-] "))
 
+	// 判断用户输入
+	if strings.HasPrefix(input, "cmd:") {
+		// 提取真实命令
+		realCmd := strings.TrimPrefix(input, "cmd:")
+		// 即使是空命令也允许 shell 尝试执行（虽然通常会报错或无输出）
+		result := ui.execer.Run(realCmd)
+		if result.ExitCode == 0 {
+			ui.svc.AddUserRoleSession(realCmd + "的执行结果：" + result.Stdout)
+			ui.chatView.Write([]byte(result.Stdout))
+		} else {
+			ui.svc.AddUserRoleSession(realCmd + "的执行结果：" + result.Stderr)
+			ui.chatView.Write([]byte(result.Stderr))
+		}
+		return
+	}
+
 	// 判断类型变化并注入初始化 prompt
 	replyAi, err := ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Class).User, input)).Send()
 	if err != nil {
