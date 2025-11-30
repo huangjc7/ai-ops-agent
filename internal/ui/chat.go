@@ -259,19 +259,6 @@ func (ui *ChatUI) AIA(input string) {
 
 	ui.chatView.Write([]byte("[green]AI:[-] "))
 
-	// 判断用户输入
-	//if shell.IsCommand(input) {
-	//	result := ui.execer.Run(input)
-	//	if result.ExitCode == 0 {
-	//		ui.svc.AddUserRoleSession(input + "的执行结果：" + result.Stdout)
-	//		ui.chatView.Write([]byte(result.Stdout))
-	//	} else {
-	//		ui.svc.AddUserRoleSession(input + "的执行结果：" + result.Stderr)
-	//		ui.chatView.Write([]byte(result.Stderr))
-	//	}
-	//	return
-	//}
-
 	// 判断类型变化并注入初始化 prompt
 	replyAi, err := ui.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Class).User, input)).Send()
 	if err != nil {
