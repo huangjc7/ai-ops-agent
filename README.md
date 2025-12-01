@@ -13,7 +13,7 @@
 * Ensures execution safety while utilizing model planning and execution capabilities.
 
 # Demo
-[![asciicast](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO.svg)](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO)
+[![asciicast](https://asciinema.org/a/R8mG62leelpF5GNJcJc6l9hog.svg)](https://asciinema.org/a/R8mG62leelpF5GNJcJc6l9hog)
 
 # Environment Variables
 | Variable Name | Description | Default Value |
