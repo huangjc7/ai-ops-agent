@@ -6,14 +6,14 @@
 [![asciicast](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO.svg)](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO)
 
 # 环境变量
-| 变量名          | 描述                | 默认值  |
-|------------|-------------------|------|
+| 变量名          | 描述                | 默认值   |
+|------------|-------------------|-------|
 | `BASE_URL` | 模型调用API地址         | `nil` |
 | `API_KEY` | 调认证APIKEY         | `nil` |
 | `MODEL` | 模型名称，如"ChatGPT-4o" | `nil` |
-| `CONTINUE_COUNT` | 循环处理次数            | `5`  |
-| `AGENT_CONTINUE_MODE` |是否启用多轮处理模式，yes开启| `no` |
-| `AI_OPS_LANG` | 语言设置 (en/zh) | `zh` |
+| `CONTINUE_COUNT` | 循环处理次数            | `5`   |
+| `AGENT_CONTINUE_MODE` |是否启用多轮处理模式，yes开启| `no`  |
+| `AI_OPS_LANG` | 语言设置 (en/zh) | `en`  |
 
 # 使用方式
 ```shell
