@@ -1,19 +1,16 @@
 package i18n
 
 import (
-	"os"
+	"ai-ops-agent/pkg/env"
 	"strings"
 )
 
 var (
-	CurrentLang = "zh"
+	CurrentLang = "en"
 )
 
 func init() {
-	lang := os.Getenv("AI_OPS_LANG")
-	if lang != "" {
-		CurrentLang = strings.ToLower(lang)
-	}
+	CurrentLang = strings.ToLower(env.Get("AI_OPS_LANG", "en"))
 }
 
 func T(key string) string {
@@ -22,9 +19,9 @@ func T(key string) string {
 			return msg
 		}
 	}
-	// Fallback to default (zh) if not found in current lang
-	if CurrentLang != "zh" {
-		if msgs, ok := messages["zh"]; ok {
+	// Fallback to default (en) if not found in current lang
+	if CurrentLang != "en" {
+		if msgs, ok := messages["en"]; ok {
 			if msg, ok := msgs[key]; ok {
 				return msg
 			}

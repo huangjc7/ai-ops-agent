@@ -1,45 +1,55 @@
-# AI运维助手
-* 完全自主式运维Agent，能够提供部署、排查、分析等多方面运维能力。
-* 在完全使用模型规划、执行等能力的同时，保障了执行安全。
 
-# 演示
+<div align="center">
+
+ <a href="https://github.com/huangjc7/ai-ops-agent">Website</a> •
+ <a href="https://github.com/huangjc7/ai-ops-agent/releases">Downloads</a> •
+ <a href="./README-zh.md">简体中文</a>
+
+</div>
+
+# AI Operations Assistant
+
+* A fully autonomous operations Agent capable of providing deployment, troubleshooting, analysis, and other operations capabilities.
+* Ensures execution safety while utilizing model planning and execution capabilities.
+
+# Demo
 [![asciicast](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO.svg)](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO)
 
-# 环境变量
-| 变量名          | 描述                | 默认值  |
-|------------|-------------------|------|
-| `BASE_URL` | 模型调用API地址         | `nil` |
-| `API_KEY` | 调认证APIKEY         | `nil` |
-| `MODEL` | 模型名称，如"ChatGPT-4o" | `nil` |
-| `CONTINUE_COUNT` | 循环处理次数            | `5`  |
-| `AGENT_CONTINUE_MODE` |是否启用多轮处理模式，yes开启| `no` |
-| `AI_OPS_LANG` | 语言设置 (en/zh) | `zh` |
+# Environment Variables
+| Variable Name | Description | Default Value |
+|------------|-------------------|---------------|
+| `BASE_URL` | Model API URL | `nil`         |
+| `API_KEY` | Authentication API KEY | `nil`         |
+| `MODEL` | Model name, e.g., "ChatGPT-4o" | `nil`         |
+| `CONTINUE_COUNT` | Max loop count for processing | `5`           |
+| `AGENT_CONTINUE_MODE` | Enable multi-turn processing mode (yes to enable) | `no`          |
+| `AI_OPS_LANG` | Language setting (en/zh) | `en`          |
 
-# 使用方式
+# Usage
 ```shell
-# 注意区分架构版本
+# Note: Choose the correct architecture version
 $ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.10/ai-ops-agent_linux_amd64.tar.gz
 $ tar xf ai-ops-agent_linux_amd64.tar.gz
 $ chmod +x ./ai-ops-agent
-$ export API_KEY="你的密钥"
+$ export API_KEY="your_api_key"
 $ export BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 $ export MODEL="qwen3-max"
 $ ./ai-ops-agent
 ```
 
-# 目前适配模型
-| 模型        | 是否支持 |
+# Supported Models
+| Model | Supported |
 |-----------|------|
-| 阿里千问  | ✅    |
-| 腾讯混元      | ✅    |
-| OpenAI         | ✅    |
-
+| Qwen (Aliyun) | ✅ |
+| Hunyuan (Tencent) | ✅ |
+| OpenAI | ✅ |
 
 # TODO LIST
-- 解决上下文长度问题，会话管理 -- 长期计划
-- 解决全局共享单个会话历史，采用多上下文进行异步协同处理
-- 允许用户上传自定义tool、mcp
-- ~~国际版支持~~
-- ~~支持多轮处理修复~~
-- ~~在线更新更新版本能力~~
-- ~~优化各类代码边界，日志收集，初始化信息没有填写，启动提示(优先)~~
+- Solve context length issues, session management -- Long-term plan
+- Solve global shared single session history, use multiple contexts for asynchronous collaborative processing
+- Allow users to upload custom tools, MCP
+- Internationalization support (Completed)
+- ~~Support multi-turn processing repair~~
+- ~~Online update version capability~~
+- ~~Optimize various code boundaries, log collection, initialization info check, startup prompts (Priority)~~
+
