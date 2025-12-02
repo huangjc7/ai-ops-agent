@@ -1,6 +1,18 @@
 # AI Operations Assistant
-* 完全自主式运维Agent，能够提供部署、排查、分析等多方面运维能力。
-* 在完全使用模型规划、执行等能力的同时，保障了执行安全。
+* ai-ops-agent 是一个基于终端的 AI 助手，专为 Linux 运维和 SRE 设计，利用大语言模型（LLMs）帮助自动化日志分析、配置检查和命令生成，使运维任务更快速、更高效。
+
+# 使用场景
+1. **自动化故障排查**:  
+   只需告诉 AI 排查问题（例如，“是什么导致我的服务失败？”）。它会自动执行相关命令，如 `systemctl status` 或 `journalctl`，收集日志，并建议下一步的调试操作。
+
+2. **Kubernetes Pod 分析**:  
+   询问 AI 分析特定的 Pod 问题（例如，“pod `<pod-name>` 出现了什么问题？”）。它会自动运行 `kubectl describe pod <pod-name>` 以及其他相关命令，并提供关于潜在配置问题的建议。
+
+3. **配置分析**:  
+   描述一个配置问题（例如，“解释一下 nginx 配置”）。AI 会自动提取相关配置，进行分析，并提供详细的解释和优化建议。
+
+4. **系统配置生成**:  
+   只需用自然语言描述一个系统配置（例如，“为应用 X 设置 nginx 反向代理”）。AI 将根据描述生成必要的部署和配置命令。
 
 # 演示
 [![asciicast](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO.svg)](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO)

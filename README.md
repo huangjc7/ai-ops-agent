@@ -8,9 +8,20 @@
 </div>
 
 # AI Operations Assistant
+* ai-ops-agent is a terminal-based AI assistant for Linux ops and SREs, powered by large language models (LLMs). It helps automate log analysis, configuration inspections, and command generation, making ops tasks faster and more efficient.
 
-* A fully autonomous operations Agent capable of providing deployment, troubleshooting, analysis, and other operations capabilities.
-* Ensures execution safety while utilizing model planning and execution capabilities.
+# Use Cases
+1. **Automated Troubleshooting**:  
+   Simply ask the AI to troubleshoot an issue (e.g., "What is causing my service to fail?"). It will automatically run relevant commands, such as `systemctl status` or `journalctl`, gather logs, and suggest the next steps for debugging.
+
+2. **Kubernetes Pod Analysis**:  
+   Ask the AI to analyze a specific pod issue (e.g., "What is wrong with pod `<pod-name>`?"). It will automatically run `kubectl describe pod <pod-name>` and other relevant commands, and provide recommendations on potential misconfigurations.
+
+3. **Configuration Analysis**:  
+   Describe a configuration issue (e.g., "Explain the nginx configuration"). The AI will automatically fetch relevant configurations, analyze them, and provide detailed explanations and optimization suggestions.
+
+4. **System Configuration Generation**:  
+   Simply describe a system configuration in natural language (e.g., "Set up a reverse proxy with nginx for app X"). The AI will generate the necessary commands for deployment and configuration based on the description.
 
 # Demo
 [![asciicast](https://asciinema.org/a/R8mG62leelpF5GNJcJc6l9hog.svg)](https://asciinema.org/a/R8mG62leelpF5GNJcJc6l9hog)
@@ -43,6 +54,13 @@ $ ./ai-ops-agent
 | Qwen (Aliyun) | ✅ |
 | Hunyuan (Tencent) | ✅ |
 | OpenAI | ✅ |
+
+# Features
+- **Automated Log Analysis**: AI automatically analyzes logs (e.g., `journalctl`, `kubectl`) and provides insights, suggesting the next steps for troubleshooting.
+- **Configuration Insights**: AI reviews system configurations (e.g., systemd, Kubernetes) and explains their impact or potential issues.
+- **Command Suggestions**: Based on your logs or system state, AI generates the appropriate commands for the next troubleshooting steps.
+- **Human-in-the-loop**: AI assists with decision-making, but you stay in control — review and approve commands before execution.
+- **Lightweight**: No agents or additional software needed on target machines — the tool runs directly from your control machine.
 
 # TODO LIST
 - Solve context length issues, session management -- Long-term plan
