@@ -33,7 +33,7 @@
 | `API_KEY` | Authentication API KEY | `nil`         |
 | `MODEL` | Model name, e.g., "ChatGPT-4o" | `nil`         |
 | `CONTINUE_COUNT` | Max loop count for processing | `5`           |
-| `AGENT_CONTINUE_MODE` | Enable multi-turn processing mode (yes to enable) | `no`          |
+| `AGENT_CONTINUE_MODE` | Enable multi-turn processing mode (yes to enable) | `yes`         |
 | `AI_OPS_LANG` | Language setting (en/zh) | `en`          |
 
 # Usage

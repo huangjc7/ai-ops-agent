@@ -5,9 +5,12 @@ var messages = map[string]map[string]string{
 		"CmdLong": `该命令启动主服务，并支持通过环境变量配置以下参数：
 
 环境变量说明：
-  • API_KEY   - API 授权密钥（默认：空字符串）
-  • BASE_URL  - 模型服务接口地址（默认：https://dashscope.aliyuncs.com/compatible-mode/v1）
-  • MODEL     - 模型名称（默认：qwen3-max）
+  • API_KEY             - API 授权密钥（默认：空字符串）
+  • BASE_URL            - 模型服务接口地址（默认：https://dashscope.aliyuncs.com/compatible-mode/v1）
+  • MODEL               - 模型名称（默认：qwen3-max）
+  • AGENT_CONTINUE_MODE - 启用多轮处理模式（默认：启用）
+  • CONTINUE_COUNT      - 模型推理最大循环轮次（默认：5次）
+  • AI_OPS_LANG         - 界面语言(默认：英语)
 
 示例：
   API_KEY=yourkey BASE_URL=https://api.openai.com/v1 MODEL=chatGPT-4o ./ai-ops-agent
@@ -65,9 +68,12 @@ var messages = map[string]map[string]string{
 		"CmdLong": `This command starts the main service and supports configuration via environment variables:
 
 Environment Variables:
-  • API_KEY   - API Key (Default: empty string)
-  • BASE_URL  - Model Service URL (Default: https://dashscope.aliyuncs.com/compatible-mode/v1)
-  • MODEL     - Model Name (Default: qwen3-max)
+  • API_KEY             - API Key (Default: empty string)
+  • BASE_URL            - Model Service URL (Default: https://dashscope.aliyuncs.com/compatible-mode/v1)
+  • MODEL               - Model Name (Default: qwen3-max)
+  • AGENT_CONTINUE_MODE - Enable multi-turn processing mode（Default：enable）
+  • CONTINUE_COUNT      - Max loop count for processing（Default：five times）
+  • AI_OPS_LANG         - Language setting(Default：English)
 
 Example:
   API_KEY=yourkey BASE_URL=https://api.openai.com/v1 MODEL=chatGPT-4o ./ai-ops-agent
