@@ -250,7 +250,6 @@ func (ui *ChatUI) handleInput(key tcell.Key) {
 }
 
 func (ui *ChatUI) AIA(input string) {
-
 	defer func() {
 		ui.input.SetDisabled(false) // 关闭输入框锁定
 		ui.app.SetFocus(ui.input)   // 聚焦输入框

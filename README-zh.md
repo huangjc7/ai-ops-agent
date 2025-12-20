@@ -28,15 +28,42 @@
 | `AI_OPS_LANG` | 语言设置 (en/zh) | `en`  |
 
 # 使用方式
+
+## 安装
 ```shell
 # 注意区分架构版本
-$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.10/ai-ops-agent_linux_amd64.tar.gz
+$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.11/ai-ops-agent_linux_amd64.tar.gz
 $ tar xf ai-ops-agent_linux_amd64.tar.gz
 $ chmod +x ./ai-ops-agent
 $ export API_KEY="你的密钥"
 $ export BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 $ export MODEL="qwen3-max"
+```
+
+## 交互模式 (TUI)
+```shell
+# 启动交互式终端界面
 $ ./ai-ops-agent
+```
+
+## 非交互模式 (管道)
+支持管道输入，无需进入 TUI 即可快速问答。此模式仅支持 **ask**（问答），不执行命令。
+
+```shell
+# 直接管道输入问题
+$ echo "如何查看磁盘使用情况？" | ./ai-ops-agent
+
+# 管道多行输入
+$ cat << EOF | ./ai-ops-agent
+解释以下 nginx 配置：
+server {
+    listen 80;
+    server_name example.com;
+}
+EOF
+
+# 配合其他命令使用
+$ cat /var/log/syslog | head -50 | ./ai-ops-agent
 ```
 
 # 目前适配模型

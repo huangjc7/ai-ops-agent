@@ -37,6 +37,8 @@
 | `AI_OPS_LANG` | Language setting (en/zh) | `en`          |
 
 # Usage
+
+## Installation
 ```shell
 # Note: Choose the correct architecture version
 $ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.11/ai-ops-agent_linux_amd64.tar.gz
@@ -45,7 +47,32 @@ $ chmod +x ./ai-ops-agent
 $ export API_KEY="your_api_key"
 $ export BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 $ export MODEL="qwen3-max"
+```
+
+## Interactive Mode (TUI)
+```shell
+# Start the interactive terminal UI
 $ ./ai-ops-agent
+```
+
+## Non-Interactive Mode (Pipe)
+Supports pipe input for quick Q&A without entering the TUI. This mode only supports **ask** (Q&A), not command execution.
+
+```shell
+# Pipe a question directly
+$ echo "How to check disk usage?" | ./ai-ops-agent
+
+# Pipe multi-line input
+$ cat << EOF | ./ai-ops-agent
+Explain the following nginx configuration:
+server {
+    listen 80;
+    server_name example.com;
+}
+EOF
+
+# Use with other commands
+$ cat /var/log/syslog | head -50 | ./ai-ops-agent
 ```
 
 # Supported Models

@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"ai-ops-agent/internal/ask"
 	"ai-ops-agent/internal/ui"
 	"ai-ops-agent/internal/version"
 	"ai-ops-agent/pkg/i18n"
 	"ai-ops-agent/pkg/precheck"
+	"ai-ops-agent/pkg/shell"
 	"time"
 
 	"fmt"
@@ -49,6 +51,14 @@ var rootCmd = &cobra.Command{
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
+
+		input := shell.GetInputFromPipe()
+
+		if input != "" {
+			ask.Run(input)
+			return
+		}
+
 		chat := ui.NewChatUI()
 		if err := chat.Run(); err != nil {
 			log.Fatal(err)
