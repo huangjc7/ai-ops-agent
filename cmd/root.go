@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"ai-ops-agent/internal/ask"
-	"ai-ops-agent/internal/ui"
+	"ai-ops-agent/internal/repl"
 	"ai-ops-agent/internal/version"
 	"ai-ops-agent/pkg/i18n"
 	"ai-ops-agent/pkg/precheck"
@@ -22,7 +22,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "ai",
-	Short: "Start the Linux AI TUI assistant",
+	Short: "Start the Linux AI assistant",
 	Long:  i18n.T("CmdLong"),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 
@@ -51,16 +51,16 @@ var rootCmd = &cobra.Command{
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
-
+		// 检查管道输入（非交互模式，只支持 ask）
 		input := shell.GetInputFromPipe()
-
 		if input != "" {
 			ask.Run(input)
 			return
 		}
 
-		chat := ui.NewChatUI()
-		if err := chat.Run(); err != nil {
+		// 交互模式 REPL
+		r := repl.New()
+		if err := r.Run(); err != nil {
 			log.Fatal(err)
 		}
 	},

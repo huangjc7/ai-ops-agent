@@ -25,71 +25,71 @@ func IsCommand(input string) bool {
 
 var dangerousPatterns = []*regexp.Regexp{
 	// =====================================================================
-	// 核心逻辑：通用危险操作关键词（增删改操作）
-	// 只要命令中包含这些关键词，就触发二次确认
+	// 核心逻辑：只有"删除"和"修改"是危险操作
+	// "查询"和"新增"不需要确认
 	// =====================================================================
 
-	// ========== 删除类操作 ==========
-	regexp.MustCompile(`(?i)\b(delete|del|remove|rm|drop|destroy|kill|stop|terminate|wipe|erase)\b`),
+	// ========== 删除类操作（危险）==========
+	regexp.MustCompile(`(?i)\b(delete|del|remove|rm|drop|destroy|kill|terminate|wipe|erase)\b`),
 	regexp.MustCompile(`(?i)\b(uninstall|purge|clean|clear|flush|truncate|prune)\b`),
 
-	// ========== 新增类操作 ==========
-	regexp.MustCompile(`(?i)\b(create|add|insert|install|write|append|put|make|new|push|upload|import)\b`),
+	// ========== 修改类操作（危险）==========
+	regexp.MustCompile(`(?i)\b(update|modify|alter|change|replace|patch|edit|rename)\b`),
+	regexp.MustCompile(`(?i)\b(disable|mask|unmask|reload|restart|reboot|shutdown|poweroff|halt)\b`),
+	regexp.MustCompile(`(?i)\b(reset|rollback|revert|restore|migrate|format)\b`),
 
-	// ========== 修改类操作 ==========
-	regexp.MustCompile(`(?i)\b(update|modify|alter|change|replace|patch|edit|rename|set|apply|commit|pull|fetch|clone|init|build|run|exec)\b`),
-	regexp.MustCompile(`(?i)\b(enable|disable|mask|unmask|reload|restart|start|reboot|shutdown|poweroff|halt|reset|rollback|revert|restore|migrate)\b`),
+	// ========== 停止服务（危险）==========
+	regexp.MustCompile(`(?i)\bstop\b`),
 
 	// =====================================================================
-	// 补充：高危系统命令（命令本身就危险，或通用关键词无法覆盖的）
+	// 补充：高危系统命令（命令本身就危险）
 	// =====================================================================
 
-	// ========== 文件操作（mv/cp 不包含通用关键词，需单独匹配） ==========
-	regexp.MustCompile(`(?i)^\s*mv\s+`),    // mv 移动/重命名
-	regexp.MustCompile(`(?i)^\s*cp\s+`),    // cp 复制（可能覆盖）
-	regexp.MustCompile(`(?i)^\s*ln\s+`),    // ln 链接
+	// ========== 文件删除/覆盖操作 ==========
+	regexp.MustCompile(`(?i)^\s*rm\s+`),    // rm 删除
+	regexp.MustCompile(`(?i)^\s*rmdir\s+`), // rmdir 删除目录
+	regexp.MustCompile(`(?i)^\s*mv\s+`),    // mv 移动/重命名（可能覆盖）
 	regexp.MustCompile(`(?i)^\s*dd\s+`),    // dd 磁盘操作
 	regexp.MustCompile(`(?i)^\s*shred\s+`), // shred 安全删除
 	regexp.MustCompile(`(?i)^\s*sed\s+-i`), // sed 原地修改
-	regexp.MustCompile(`(?i)^\s*tee\s+`),   // tee 写文件
+	regexp.MustCompile(`(?i)>\s*/`),        // 重定向到绝对路径（危险）
 
-	// ========== 文件内容重定向 ==========
-	regexp.MustCompile(`(?i)>\s*\S+`), // 重定向写入文件
-
-	// ========== 系统电源（halt 等已在通用关键词，init 需单独匹配） ==========
+	// ========== 系统电源 ==========
 	regexp.MustCompile(`(?i)\binit\s+[06]\b`), // init 0/6
 
-	// ========== 磁盘/分区/文件系统（专有命令，通用关键词无法覆盖） ==========
-	regexp.MustCompile(`(?i)\b(wipefs|mkfs|parted|fdisk|gdisk|cfdisk|sfdisk)\b`),
-	regexp.MustCompile(`(?i)\b(lvcreate|lvremove|lvresize|lvextend|vgremove|vgcreate|pvcreate|pvremove)\b`),
-	regexp.MustCompile(`(?i)\b(resize2fs|e2fsck|tune2fs|xfs_growfs|xfs_repair|fsck)\b`),
-	regexp.MustCompile(`(?i)^\s*(mount|umount)\s+`),
-	regexp.MustCompile(`(?i)^\s*(mkswap|swapoff|swapon)\s+`),
-	regexp.MustCompile(`(?i)^\s*(blkdiscard|hdparm)\s+`),
-	regexp.MustCompile(`(?i)\b(cryptsetup|mdadm|zfs|btrfs)\b`),
+	// ========== 磁盘/分区操作（修改类）==========
+	regexp.MustCompile(`(?i)\b(wipefs|mkfs|parted|fdisk|gdisk)\b`),
+	regexp.MustCompile(`(?i)\b(lvremove|lvresize|vgremove|pvremove)\b`),
+	regexp.MustCompile(`(?i)\b(resize2fs|e2fsck|tune2fs|xfs_repair|fsck)\b`),
+	regexp.MustCompile(`(?i)^\s*umount\s+`),     // 卸载（修改）
+	regexp.MustCompile(`(?i)^\s*swapoff\s+`),    // 关闭swap（修改）
+	regexp.MustCompile(`(?i)^\s*blkdiscard\s+`), // 磁盘擦除
 
-	// ========== 用户/权限（专有命令） ==========
-	regexp.MustCompile(`(?i)^\s*(useradd|userdel|usermod|groupadd|groupdel|groupmod)\s+`),
-	regexp.MustCompile(`(?i)^\s*passwd\b`),
-	regexp.MustCompile(`(?i)^\s*(chown|chmod|chattr|setfacl)\s+`),
-	regexp.MustCompile(`(?i)^\s*visudo\b`),
-	regexp.MustCompile(`(?i)^\s*(setenforce|aa-enforce|aa-complain|aa-disable)\b`),
+	// ========== 用户/权限修改 ==========
+	regexp.MustCompile(`(?i)^\s*userdel\s+`),              // 删除用户
+	regexp.MustCompile(`(?i)^\s*groupdel\s+`),             // 删除组
+	regexp.MustCompile(`(?i)^\s*usermod\s+`),              // 修改用户
+	regexp.MustCompile(`(?i)^\s*passwd\b`),                // 修改密码
+	regexp.MustCompile(`(?i)^\s*(chown|chmod)\s+.*-[rR]`), // 递归修改权限
 
-	// ========== 网络配置（专有命令） ==========
-	regexp.MustCompile(`(?i)^\s*(iptables|ip6tables|nft)\b`),
-	regexp.MustCompile(`(?i)^\s*ip\s+(route|addr|link|rule|neigh)\s+`),
+	// ========== 网络配置修改 ==========
+	regexp.MustCompile(`(?i)^\s*iptables\s+.*(-[ADIRF]|--delete|--flush)`),   // 修改防火墙规则
+	regexp.MustCompile(`(?i)^\s*ip\s+(route|addr|link)\s+(del|flush|set)\b`), // 删除/修改网络
 
-	// ========== 内核/系统参数 ==========
+	// ========== 内核参数修改 ==========
 	regexp.MustCompile(`(?i)^\s*sysctl\s+-w\b`), // sysctl 写参数
-	regexp.MustCompile(`(?i)^\s*(modprobe|rmmod|insmod)\b`),
+	regexp.MustCompile(`(?i)^\s*rmmod\b`),       // 卸载内核模块
 
-	// ========== 定时任务 ==========
-	regexp.MustCompile(`(?i)^\s*crontab\s+-[re]\b`), // crontab 编辑/删除
-	regexp.MustCompile(`(?i)^\s*at\s+`),             // at 定时任务
+	// ========== 定时任务删除/修改 ==========
+	regexp.MustCompile(`(?i)^\s*crontab\s+-r\b`), // crontab 删除
 
-	// ========== 提权操作 ==========
-	regexp.MustCompile(`(?i)\bsudo\b`),
-	regexp.MustCompile(`(?i)^\s*su\s+`),
+	// ========== Git 危险操作（会丢失数据）==========
+	regexp.MustCompile(`(?i)\bgit\s+reset\s+--hard\b`),        // 重置丢弃更改
+	regexp.MustCompile(`(?i)\bgit\s+push\s+.*(-f|--force)\b`), // 强制推送
+	regexp.MustCompile(`(?i)\bgit\s+clean\s+.*-f`),            // 清理文件
+
+	// ========== 数据库删除/修改 ==========
+	regexp.MustCompile(`(?i)\b(DROP|DELETE|TRUNCATE|ALTER)\s+`), // SQL 危险操作
 }
 
 func IsDangerousCommandRegex(cmd string) bool {

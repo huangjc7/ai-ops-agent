@@ -3,6 +3,7 @@ module ai-ops-agent
 go 1.23.4
 
 require (
+	github.com/chzyer/readline v1.5.1
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/rivo/tview v0.0.0-20250501113434-0c592cd31026
 	github.com/sashabaranov/go-openai v1.40.0
