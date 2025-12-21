@@ -24,7 +24,8 @@
    Simply describe a system configuration in natural language (e.g., "Set up a reverse proxy with nginx for app X"). The AI will generate the necessary commands for deployment and configuration based on the description.
 
 # Demo
-[![asciicast](https://asciinema.org/a/R8mG62leelpF5GNJcJc6l9hog.svg)](https://asciinema.org/a/R8mG62leelpF5GNJcJc6l9hog)
+* Due to the author's location, models such as OpenAI were not available, which may result in Chinese characters appearing in the dialogue.
+[![asciicast](https://asciinema.org/a/7jHbm4HUaglBx34pQkk2iKaKa.svg)](https://asciinema.org/a/7jHbm4HUaglBx34pQkk2iKaKa)
 
 # Environment Variables
 | Variable Name | Description | Default Value |
@@ -41,7 +42,7 @@
 ## Installation
 ```shell
 # Note: Choose the correct architecture version
-$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.11/ai-ops-agent_linux_amd64.tar.gz
+$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v3.0.1/ai-ops-agent_linux_amd64.tar.gz
 $ tar xf ai-ops-agent_linux_amd64.tar.gz
 $ chmod +x ./ai-ops-agent
 $ export API_KEY="your_api_key"
@@ -49,7 +50,7 @@ $ export BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"
 $ export MODEL="qwen3-max"
 ```
 
-## Interactive Mode (TUI)
+## Interactive Mode (REPL)
 ```shell
 # Start the interactive terminal UI
 $ ./ai-ops-agent

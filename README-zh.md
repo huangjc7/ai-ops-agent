@@ -15,7 +15,7 @@
    只需用自然语言描述一个系统配置（例如，“为应用 X 设置 nginx 反向代理”）。AI 将根据描述生成必要的部署和配置命令。
 
 # 演示
-[![asciicast](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO.svg)](https://asciinema.org/a/U53jImXIlvHUB3Gm9cqA4o5tO)
+[![asciicast](https://asciinema.org/a/gdQnNEme6RTSsg4o5lqHgWw57.svg)](https://asciinema.org/a/gdQnNEme6RTSsg4o5lqHgWw57)
 
 # 环境变量
 | 变量名          | 描述                | 默认值   |
@@ -32,7 +32,7 @@
 ## 安装
 ```shell
 # 注意区分架构版本
-$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v2.0.11/ai-ops-agent_linux_amd64.tar.gz
+$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v3.0.1/ai-ops-agent_linux_amd64.tar.gz
 $ tar xf ai-ops-agent_linux_amd64.tar.gz
 $ chmod +x ./ai-ops-agent
 $ export API_KEY="你的密钥"

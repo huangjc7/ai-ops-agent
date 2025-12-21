@@ -319,7 +319,7 @@ func (r *REPL) Operation(input string) {
 	var cmdJsonReply string
 	var err error
 
-	r.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Operation).System, system.GetSystemInfo()))
+	//r.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Operation).System, system.GetSystemInfo()))
 
 	if input == "" {
 		cmdJsonReply, err = r.svc.
@@ -436,6 +436,7 @@ func (r *REPL) Operation(input string) {
 	summaryReply, err := r.svc.AddUserRoleSession(cmdExecSummary + i18n.T("JudgeContinue")).Send()
 	if err != nil {
 		fmt.Printf("[error] %s\n", err.Error())
+		return
 	}
 
 	if !r.continueEnabled {
@@ -457,7 +458,7 @@ func (r *REPL) Operation(input string) {
 
 	// 继续
 	if strings.Contains(summaryReply, "<continue>") || strings.Contains(summaryReply, "<result>") {
-		fmt.Printf("\n"+colorCyan+"[debug] %s"+colorReset+"\n\n", cmdExecSummary)
+		fmt.Printf("\n"+colorCyan+"[CmdSummary] %s"+colorReset+"\n\n", cmdExecSummary)
 		r.repairCount++
 		r.Operation(i18n.T("GenNewCmd"))
 	} else {

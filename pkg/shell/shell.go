@@ -52,7 +52,7 @@ var dangerousPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)^\s*dd\s+`),    // dd 磁盘操作
 	regexp.MustCompile(`(?i)^\s*shred\s+`), // shred 安全删除
 	regexp.MustCompile(`(?i)^\s*sed\s+-i`), // sed 原地修改
-	regexp.MustCompile(`(?i)>\s*/`),        // 重定向到绝对路径（危险）
+	// 注意：重定向到绝对路径的检测在 IsDangerousCommandRegex 中单独处理，排除 /dev/null
 
 	// ========== 系统电源 ==========
 	regexp.MustCompile(`(?i)\binit\s+[06]\b`), // init 0/6
@@ -92,11 +92,37 @@ var dangerousPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(DROP|DELETE|TRUNCATE|ALTER)\s+`), // SQL 危险操作
 }
 
+// 移除引号内的内容，避免 grep/awk 等命令的搜索模式被误匹配
+func stripQuotedContent(cmd string) string {
+	// 移除单引号内容
+	singleQuotePattern := regexp.MustCompile(`'[^']*'`)
+	cmd = singleQuotePattern.ReplaceAllString(cmd, "''")
+
+	// 移除双引号内容
+	doubleQuotePattern := regexp.MustCompile(`"[^"]*"`)
+	cmd = doubleQuotePattern.ReplaceAllString(cmd, `""`)
+
+	return cmd
+}
+
+// 检测重定向到绝对路径（排除 /dev/null）
+var redirectPattern = regexp.MustCompile(`(?i)>\s*/`)
+var devNullPattern = regexp.MustCompile(`(?i)>\s*/dev/null`)
+
 func IsDangerousCommandRegex(cmd string) bool {
+	// 预处理：移除引号内的内容，避免 grep 'kill' 这种被误匹配
+	cleanCmd := stripQuotedContent(cmd)
+
 	for _, pattern := range dangerousPatterns {
-		if pattern.MatchString(cmd) {
+		if pattern.MatchString(cleanCmd) {
 			return true
 		}
 	}
+
+	// 单独检测重定向到绝对路径，但排除 /dev/null
+	if redirectPattern.MatchString(cleanCmd) && !devNullPattern.MatchString(cleanCmd) {
+		return true
+	}
+
 	return false
 }
