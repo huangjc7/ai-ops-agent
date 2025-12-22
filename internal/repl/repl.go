@@ -96,7 +96,7 @@ func (r *REPL) Run() error {
 	welcomeMsg := i18n.T("WelcomeMessage")
 	welcomeMsg = stripTviewColors(welcomeMsg)
 	fmt.Printf(colorCyan+welcomeMsg+colorReset+"\n", modeStr)
-	fmt.Println(i18n.T("HelpTip"))
+	//fmt.Println(i18n.T("HelpTip"))
 	fmt.Println()
 
 	// 主循环

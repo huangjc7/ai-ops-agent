@@ -16,7 +16,7 @@ var messages = map[string]map[string]string{
   API_KEY=yourkey BASE_URL=https://api.openai.com/v1 MODEL=chatGPT-4o ./ai-ops-agent
 `,
 		"NewVersion":          "有新版本，下载新版本得到更好体验。下载地址：https://github.com/huangjc7/ai-ops-agent/releases\n4秒后进入工具",
-		"WelcomeMessage":      "[blue]欢迎使用 Linux AI 助手！我可以协助你处理各类运维相关任务。\n输入问题并按 Enter 即可开始对话\n例如，你可以尝试输入：帮我分析系统日志 或 部署一个 Nginx 容器。\n\n输入 /h 并按 Enter 可查看帮助信息\n多轮处理模式： %s[-]",
+		"WelcomeMessage":      "[blue]欢迎使用 Linux AI 助手！我可以协助你处理各类运维相关任务。\n输入问题并按 Enter 即可开始对话\n例如，你可以尝试输入：帮我分析系统日志 或 部署一个 Nginx 容器。\n\n输入 /h 并按 Enter 可查看帮助信息，输入 /exit 退出\n多轮处理模式： %s[-]",
 		"HistoryTitle":        " 历史对话（按 Esc 返回）",
 		"Assistant":           "助手",
 		"UserRole":            "用户",
@@ -64,7 +64,6 @@ var messages = map[string]map[string]string{
 		"SysGoVer":            "Go版本: %s\n",
 		"SysUser":             "当前登录用户 %s \n",
 		"SysPwd":              "当前目录位置 %s \n",
-		"HelpTip":             "输入 /help 查看帮助信息，输入 /exit 退出",
 		"HelpCmdMulti":        "进入多行输入模式",
 		"MultilineModeHint":   "[多行模式] 每行按 Enter 换行，输入空行（再按一次 Enter）发送，Ctrl+C 取消",
 		"MultilineCanceled":   "已取消多行输入",
