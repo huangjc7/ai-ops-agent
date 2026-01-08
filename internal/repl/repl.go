@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +46,9 @@ type REPL struct {
 	repairCount int // 递归计数器
 
 	continueEnabled bool // 开关持续Ai推理模式
+
+	cwd  string // 当前工作目录（用于模拟终端）
+	home string // 用户 home（用于 ~ 展开）
 }
 
 // New 构造函数
@@ -53,14 +58,35 @@ func New() *REPL {
 	classSvc := ai.GetAIModel().TextGenTextModelClient
 	tmpSvc := ai.GetAIModel().TextGenTextModelClient
 
+	cwd, _ := os.Getwd()
+	if cwd == "" {
+		cwd = "/"
+	}
+	home, _ := os.UserHomeDir()
+
+	r := &REPL{
+		svc:      svc,
+		classSvc: classSvc,
+		execer:   execer,
+		TmpSvc:   tmpSvc,
+		cwd:      cwd,
+		home:     home,
+	}
+
+	historyFile := ""
+	if home != "" {
+		historyFile = filepath.Join(home, ".ai-ops-agent_history")
+	}
+
 	// 创建 readline 实例，支持行编辑（退格、方向键等）和多行输入
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          colorYellow + "You: " + colorReset,
-		HistoryFile:     "", // 可选：设置历史文件路径
+		Prompt:          r.terminalPrompt(),
+		HistoryFile:     historyFile,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
 		// 多行输入：按 \ 结尾继续输入下一行
-		EnableMask: false,
+		EnableMask:   false,
+		AutoComplete: newTerminalCompleter(r),
 	})
 	if err != nil {
 		// 如果 readline 初始化失败，程序无法正常运行
@@ -68,13 +94,7 @@ func New() *REPL {
 		os.Exit(1)
 	}
 
-	r := &REPL{
-		svc:      svc,
-		classSvc: classSvc,
-		execer:   execer,
-		TmpSvc:   tmpSvc,
-		rl:       rl,
-	}
+	r.rl = rl
 
 	if env.Get("AGENT_CONTINUE_MODE", "yes") == "yes" {
 		r.continueEnabled = true
@@ -101,7 +121,7 @@ func (r *REPL) Run() error {
 
 	// 主循环
 	for {
-		r.rl.SetPrompt(colorYellow + "You: " + colorReset)
+		r.rl.SetPrompt(r.terminalPrompt())
 		line, err := r.rl.Readline()
 		if err != nil {
 			if err == readline.ErrInterrupt {
@@ -118,7 +138,7 @@ func (r *REPL) Run() error {
 			continue
 		}
 
-		// 处理命令
+		// 处理斜杠命令（兼容旧用法）
 		if strings.HasPrefix(input, "/") {
 			if r.handleCommand(input) {
 				continue
@@ -127,9 +147,11 @@ func (r *REPL) Run() error {
 			break
 		}
 
-		// 处理用户输入
-		r.AIA(input)
-		fmt.Println()
+		// 处理终端输入（命令执行 or AI 交互）
+		if cont := r.handleTerminalInput(input); !cont {
+			break
+		}
+		fmt.Fprintln(r.rl.Stdout())
 	}
 
 	return nil
@@ -199,8 +221,10 @@ func (r *REPL) handleCommand(input string) bool {
 		}
 		multiInput = strings.TrimSpace(multiInput)
 		if multiInput != "" {
-			r.AIA(multiInput)
-			fmt.Println()
+			if cont := r.handleTerminalInput(multiInput); !cont {
+				return false
+			}
+			fmt.Fprintln(r.rl.Stdout())
 		}
 		return true
 	default:
@@ -243,54 +267,287 @@ func (r *REPL) PrintHelpInfo() {
 	fmt.Println(strings.Repeat("-", 40))
 }
 
-// AIA 核心逻辑（保持不变）
-func (r *REPL) AIA(input string) {
-	fmt.Print(colorGreen + "AI: " + colorReset)
-
-	// 判断用户输入
-	if strings.HasPrefix(input, "cmd:") {
-		// 提取真实命令
-		realCmd := strings.TrimPrefix(input, "cmd:")
-		result := r.execer.Run(realCmd)
-		if result.ExitCode == 0 {
-			r.svc.AddUserRoleSession(realCmd + "的执行结果：" + result.Stdout)
-			fmt.Print(result.Stdout)
-		} else {
-			r.svc.AddUserRoleSession(realCmd + "的执行结果：" + result.Stderr)
-			fmt.Print(result.Stderr)
-		}
-		return
+// handleTerminalInput 用于判断当前输入是“直接执行的命令”还是“交给 AI 处理的对话/任务”。
+// 返回 false 表示需要退出 REPL。
+func (r *REPL) handleTerminalInput(input string) bool {
+	// 快路径：明显像“要立即执行的命令”，就不走 AI 分类，直接执行。
+	if r.looksLikeImmediateShell(input) {
+		return r.execShellLine(input)
 	}
 
-	// 判断类型变化并注入初始化 prompt
+	// 否则交给 AI 进行分类：shell / ask / operation。
 	replyAi, err := r.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Class).User, input)).Send()
 	if err != nil {
-		fmt.Printf("\n[error] %s%s\n", i18n.T("ClassifyFailed"), err.Error())
-		return
+		fmt.Fprintf(r.rl.Stderr(), "\n[error] %s%s\n", i18n.T("ClassifyFailed"), err.Error())
+		return true
 	}
 	r.classSvc.Close()
 
 	var inputClass = prompt.InputClassResult
 	if r.err = json.Unmarshal([]byte(replyAi), &inputClass); r.err != nil {
-		fmt.Println(r.err.Error())
-		return
+		fmt.Fprintln(r.rl.Stderr(), r.err.Error())
+		return true
 	}
 
-	// 判断是否需要更新 prompt 类型
+	// 只注入一次系统初始化 prompt（用于 AI 对话上下文）。
 	if !r.systemInjected {
 		r.svc.AddSystemRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.InitPrompt).User))
 		r.systemInjected = true
 	}
 
-	// 判断是否需要切换类型 Prompt
-	switch inputClass.Type {
+	switch strings.ToLower(inputClass.Type) {
+	case "shell":
+		return r.execShellLine(input)
 	case strings.ToLower(prompt.Ask):
 		r.Ask(input)
+		return true
 	case strings.ToLower(prompt.Operation):
 		r.Operation(input)
+		return true
 	default:
-		fmt.Printf("[warning]: %s\n", i18n.T("NoMatchType"))
+		// 默认回退到 ask，避免误执行。
+		r.Ask(input)
+		return true
 	}
+}
+
+func (r *REPL) terminalPrompt() string {
+	dir := r.cwd
+	if r.home != "" && strings.HasPrefix(dir, r.home) {
+		dir = "~" + strings.TrimPrefix(dir, r.home)
+	}
+	return colorYellow + dir + " $ " + colorReset
+}
+
+func (r *REPL) looksLikeImmediateShell(input string) bool {
+	s := strings.TrimSpace(input)
+	if s == "" {
+		return false
+	}
+	// 注释行
+	if strings.HasPrefix(s, "#") {
+		return true
+	}
+
+	// “问句”更可能是咨询/解释，应走 AI（避免误执行）。
+	if strings.Contains(s, "?") || strings.Contains(s, "？") {
+		// 例外：用户明确输入了 --help，本质还是命令。
+		if strings.Contains(s, "--help") {
+			return true
+		}
+		return false
+	}
+
+	// 中英文“在问命令用法/参数”的提示词：应走 AI（避免把提问当成要执行的命令）。
+	askHints := []string{"参数", "用法", "怎么", "如何", "为什么", "是什么", "解释", "含义", "什么意思", "option", "options", "usage", "what", "how", "why"}
+	// man xxx 本身就是命令（交互类，后续会走直通执行）。
+	if strings.HasPrefix(strings.ToLower(s), "man ") {
+		return true
+	}
+	for _, h := range askHints {
+		if strings.Contains(strings.ToLower(s), h) {
+			// allow explicit help flag
+			if strings.Contains(s, "--help") || strings.Contains(s, "-h") {
+				return true
+			}
+			return false
+		}
+	}
+
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return false
+	}
+	first := fields[0]
+	switch first {
+	case "cd", "pwd", "clear", "exit", "quit":
+		return true
+	}
+	// 如果第一个 token 能在 PATH 中找到，大概率就是要执行的命令。
+	if _, err := exec.LookPath(first); err == nil {
+		return true
+	}
+	return false
+}
+
+const shellSentinel = "__AIOPS_AGENT__"
+
+func (r *REPL) execShellLine(input string) bool {
+	s := strings.TrimSpace(input)
+	if s == "" {
+		return true
+	}
+	if strings.HasPrefix(s, "#") {
+		return true
+	}
+
+	// 交互/全屏命令（vim/less/top/ssh/...）需要真实 TTY。
+	// 这里走“直通模式”：不捕获 stdout/stderr，把终端控制权交给子进程。
+	if r.isInteractiveCommandLine(s) {
+		if err := r.execInteractive(s); err != nil {
+			fmt.Fprintln(r.rl.Stderr(), err.Error())
+		}
+		return true
+	}
+
+	// 基础内建命令：提升“像真终端”的体验（这些应影响 REPL 自己的 cwd/状态）。
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return true
+	}
+	switch fields[0] {
+	case "exit", "quit":
+		fmt.Fprintln(r.rl.Stdout(), i18n.T("Goodbye"))
+		return false
+	case "clear":
+		// ANSI 清屏
+		fmt.Fprint(r.rl.Stdout(), "\033[H\033[2J")
+		return true
+	case "pwd":
+		fmt.Fprintln(r.rl.Stdout(), r.cwd)
+		return true
+	case "cd":
+		target := ""
+		if len(fields) >= 2 {
+			target = strings.Join(fields[1:], " ")
+		}
+		if target == "" {
+			target = r.home
+		}
+		if target == "" {
+			target = "/"
+		}
+		if err := r.changeDir(target); err != nil {
+			fmt.Fprintln(r.rl.Stderr(), err.Error())
+		}
+		return true
+	}
+
+	// 用一层包装命令捕获执行后的 cwd，并尽量保留原始 exit code。
+	wrapped := fmt.Sprintf(`%s; __ec=$?; printf '\n%sEXIT=%%d\n%sCWD=%%s\n' "$__ec" "$(pwd)"; exit $__ec`, s, shellSentinel, shellSentinel)
+	result := r.execer.RunInDir(wrapped, r.cwd)
+
+	stdout, newCwd := stripShellSentinels(result.Stdout)
+	if newCwd != "" {
+		r.cwd = newCwd
+	}
+
+	if stdout != "" {
+		fmt.Fprint(r.rl.Stdout(), stdout)
+		// 贴近真实终端行为：若输出末尾没有换行，补一个换行。
+		if !strings.HasSuffix(stdout, "\n") {
+			fmt.Fprintln(r.rl.Stdout())
+		}
+	}
+	if result.Stderr != "" {
+		fmt.Fprint(r.rl.Stderr(), result.Stderr)
+		if !strings.HasSuffix(result.Stderr, "\n") {
+			fmt.Fprintln(r.rl.Stderr())
+		}
+	}
+	return true
+}
+
+func (r *REPL) isInteractiveCommandLine(cmd string) bool {
+	s := strings.TrimSpace(cmd)
+	if s == "" {
+		return false
+	}
+
+	// 如果管道接到 pager（less/more），通常需要交互能力，按交互命令处理。
+	lower := strings.ToLower(s)
+	if strings.Contains(lower, "| less") || strings.Contains(lower, "|more") || strings.Contains(lower, "| more") {
+		return true
+	}
+
+	// 容器/远程工具常见的 TTY 直连参数。
+	if strings.Contains(lower, " -it ") || strings.Contains(lower, " --tty ") || strings.Contains(lower, " --interactive ") {
+		return true
+	}
+
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return false
+	}
+	first := strings.ToLower(fields[0])
+
+	switch first {
+	case "vi", "vim", "nvim", "nano", "less", "more", "top", "htop", "watch", "man",
+		"ssh", "sftp", "scp", "ftp", "telnet",
+		"bash", "sh", "zsh", "fish",
+		"python", "python3", "node", "irb",
+		"mysql", "psql", "sqlite3", "redis-cli":
+		return true
+	default:
+		return false
+	}
+}
+
+func (r *REPL) execInteractive(cmdline string) error {
+	// 先离开 readline 的提示行，再把控制权交给子进程，避免画面错位。
+	r.rl.Clean()
+	fmt.Fprintln(r.rl.Stdout())
+
+	// 尽力恢复终端到“非 raw 模式”，让交互程序能正常读写 TTY。
+	// 注意：这里一般不在 Readline() 阻塞中，readline 的 Terminal goroutine 通常是空闲的。
+	_ = r.rl.Terminal.ExitRawMode()
+	defer func() { _ = r.rl.Terminal.EnterRawMode() }()
+
+	cmd := exec.Command("bash", "-c", cmdline)
+	cmd.Dir = r.cwd
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s: %w", strings.Fields(cmdline)[0], err)
+	}
+
+	// 全屏程序退出后，刷新一次，保证下一次 prompt 绘制干净。
+	r.rl.Refresh()
+	return nil
+}
+
+func stripShellSentinels(stdout string) (clean string, cwd string) {
+	lines := strings.Split(stdout, "\n")
+	out := make([]string, 0, len(lines))
+	for _, ln := range lines {
+		if strings.HasPrefix(ln, shellSentinel+"CWD=") {
+			cwd = strings.TrimPrefix(ln, shellSentinel+"CWD=")
+			continue
+		}
+		if strings.HasPrefix(ln, shellSentinel+"EXIT=") {
+			continue
+		}
+		out = append(out, ln)
+	}
+	clean = strings.Join(out, "\n")
+	// 去掉一个由于 Split 行尾空元素导致的尾随换行，避免输出多一行空行。
+	clean = strings.TrimSuffix(clean, "\n")
+	return clean, strings.TrimSpace(cwd)
+}
+
+func (r *REPL) changeDir(target string) error {
+	t := strings.TrimSpace(target)
+	if t == "" {
+		return nil
+	}
+	if strings.HasPrefix(t, "~") && r.home != "" {
+		t = filepath.Join(r.home, strings.TrimPrefix(t, "~"))
+	}
+	if !filepath.IsAbs(t) {
+		t = filepath.Join(r.cwd, t)
+	}
+	t = filepath.Clean(t)
+
+	fi, err := os.Stat(t)
+	if err != nil {
+		return fmt.Errorf("cd: %s: %v", target, err)
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("cd: %s: not a directory", target)
+	}
+	r.cwd = t
+	return nil
 }
 
 // Ask 问答模式（保持核心逻辑不变）
@@ -299,15 +556,15 @@ func (r *REPL) Ask(input string) {
 		AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Ask).System, system.GetSystemInfo())).
 		AddUserRoleSession(input).
 		SendStream(func(token string) {
-			fmt.Print(token)
+			fmt.Fprint(r.rl.Stdout(), token)
 		})
 
 	if err != nil {
-		fmt.Printf("\n[error] %s\n", err.Error())
+		fmt.Fprintf(r.rl.Stderr(), "\n[error] %s\n", err.Error())
 		return
 	}
 
-	fmt.Println()
+	fmt.Fprintln(r.rl.Stdout())
 }
 
 // Operation 操作模式（保持核心逻辑不变）
@@ -332,7 +589,7 @@ func (r *REPL) Operation(input string) {
 	}
 
 	if err != nil {
-		fmt.Printf("\n[error] %s\n", err.Error())
+		fmt.Fprintf(r.rl.Stderr(), "\n[error] %s\n", err.Error())
 		return
 	}
 
@@ -345,7 +602,7 @@ func (r *REPL) Operation(input string) {
 		// 没找到，重新请求
 		cmdJsonReply, err = r.svc.AddUserRoleSession(i18n.T("ReGenerateCmd")).Send()
 		if err != nil {
-			fmt.Printf("[error] %s\n", err.Error())
+			fmt.Fprintf(r.rl.Stderr(), "[error] %s\n", err.Error())
 			return
 		}
 	}
@@ -362,13 +619,13 @@ func (r *REPL) Operation(input string) {
 	for _, resultData := range resultDatas {
 		r.err = json.Unmarshal([]byte(resultData), &commands)
 		if r.err != nil {
-			fmt.Printf("[error] %s%s\n", i18n.T("ParseCmdFailed"), r.err.Error())
+			fmt.Fprintf(r.rl.Stderr(), "[error] %s%s\n", i18n.T("ParseCmdFailed"), r.err.Error())
 			return
 		}
 
-		fmt.Println()
+		fmt.Fprintln(r.rl.Stdout())
 		for step, command := range commands {
-			fmt.Printf("%s:%d %s:%s %s:%s\n", i18n.T("Step"), step+1, i18n.T("Cmd"), command.Cmd, i18n.T("Desc"), command.Desc)
+			fmt.Fprintf(r.rl.Stdout(), "%s:%d %s:%s %s:%s\n", i18n.T("Step"), step+1, i18n.T("Cmd"), command.Cmd, i18n.T("Desc"), command.Desc)
 		}
 
 		// 去掉 tview 颜色标签并用 ANSI 颜色
@@ -378,21 +635,21 @@ func (r *REPL) Operation(input string) {
 		confirmed := r.confirmWithPrompt(colorYellow + checkMsg + colorReset)
 		if !confirmed {
 			cancelMsg := stripTviewColors(i18n.T("CancelMsg"))
-			fmt.Println(colorGreen + cancelMsg + colorReset)
+			fmt.Fprintln(r.rl.Stdout(), colorGreen+cancelMsg+colorReset)
 			return
 		}
 
 		confirmMsg := stripTviewColors(i18n.T("ConfirmMsg"))
-		fmt.Println(colorGreen + confirmMsg + colorReset)
+		fmt.Fprintln(r.rl.Stdout(), colorGreen+confirmMsg+colorReset)
 
 		for i, command := range commands {
-			fmt.Printf(colorBlue+"%d) %s"+colorReset+"\n", i+1, command.Desc)
+			fmt.Fprintf(r.rl.Stdout(), colorBlue+"%d) %s"+colorReset+"\n", i+1, command.Desc)
 
 			// 检测高危命令
 			if shell.IsDangerousCommandRegex(command.Cmd) {
 				// 先打印警告信息
 				dangerMsg := stripTviewColors(i18n.T("DangerousCmd"))
-				fmt.Printf(colorRed+dangerMsg+colorReset+"\n", command.Cmd)
+				fmt.Fprintf(r.rl.Stdout(), colorRed+dangerMsg+colorReset+"\n", command.Cmd)
 				// 确认提示符（不包含换行）
 				dangerPrompt := colorRed + stripTviewColors(i18n.T("DangerousCmdConfirm")) + colorReset
 
@@ -400,13 +657,13 @@ func (r *REPL) Operation(input string) {
 				confirmed := r.confirmWithPrompt(dangerPrompt)
 				if !confirmed {
 					skipMsg := stripTviewColors(i18n.T("SkipCmd"))
-					fmt.Print(colorYellow + skipMsg + colorReset)
+					fmt.Fprint(r.rl.Stdout(), colorYellow+skipMsg+colorReset)
 					continue
 				}
 			}
 
 			// shell执行
-			result := r.execer.Run(command.Cmd)
+			result := r.execer.RunInDir(command.Cmd, r.cwd)
 			if result.ExitCode == 0 {
 				fmtResult += fmt.Sprintf(i18n.T("ExecResult"), command.Cmd, result.Stdout)
 			} else {
@@ -424,7 +681,7 @@ func (r *REPL) Operation(input string) {
 	// 提炼描述
 	cmdExecSummary, err := r.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Summary).User, fmtResult)).Send()
 	if err != nil {
-		fmt.Printf("[error] %s%s\n", i18n.T("SummaryFailed"), err.Error())
+		fmt.Fprintf(r.rl.Stderr(), "[error] %s%s\n", i18n.T("SummaryFailed"), err.Error())
 		return
 	}
 	r.TmpSvc.Close()
@@ -435,40 +692,37 @@ func (r *REPL) Operation(input string) {
 	// 重新 Send 一次，继续对话
 	summaryReply, err := r.svc.AddUserRoleSession(cmdExecSummary + i18n.T("JudgeContinue")).Send()
 	if err != nil {
-		fmt.Printf("[error] %s\n", err.Error())
+		fmt.Fprintf(r.rl.Stderr(), "[error] %s\n", err.Error())
 		return
 	}
 
 	if !r.continueEnabled {
-		fmt.Println()
+		fmt.Fprintln(r.rl.Stdout())
 		return
 	}
 
-	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "5")); r.repairCount > count-1 {
-		fmt.Println(colorYellow + i18n.T("MaxRoundReached") + colorReset)
-
-		fmt.Print(colorGreen + "AI: " + colorReset)
+	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "20")); r.repairCount > count-1 {
+		fmt.Fprintln(r.rl.Stdout(), colorYellow+i18n.T("MaxRoundReached")+colorReset)
 
 		r.svc.AddUserRoleSession(i18n.T("SummaryRequest")).
 			SendStream(func(token string) {
-				fmt.Print(token)
+				fmt.Fprint(r.rl.Stdout(), token)
 			})
 		return
 	}
 
 	// 继续
 	if strings.Contains(summaryReply, "<continue>") || strings.Contains(summaryReply, "<result>") {
-		fmt.Printf("\n"+colorCyan+"[CmdSummary] %s"+colorReset+"\n\n", cmdExecSummary)
+		fmt.Fprintf(r.rl.Stdout(), "\n"+colorCyan+"[CmdSummary] %s"+colorReset+"\n\n", cmdExecSummary)
 		r.repairCount++
 		r.Operation(i18n.T("GenNewCmd"))
 	} else {
-		fmt.Print(colorGreen + "AI: " + colorReset)
 		r.svc.SendStream(func(token string) {
-			fmt.Print(token)
+			fmt.Fprint(r.rl.Stdout(), token)
 		})
 	}
 
-	fmt.Println()
+	fmt.Fprintln(r.rl.Stdout())
 }
 
 // confirmWithPrompt 带提示的 y/n 确认
@@ -507,7 +761,7 @@ func (r *REPL) RunSingleAsk(question string) {
 	err := r.svc.
 		AddUserRoleSession(question).
 		SendStream(func(token string) {
-			fmt.Print(token)
+			fmt.Fprint(os.Stdout, token)
 		})
 
 	if err != nil {

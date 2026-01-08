@@ -23,7 +23,7 @@
 | `BASE_URL` | 模型调用API地址         | `nil` |
 | `API_KEY` | 调认证APIKEY         | `nil` |
 | `MODEL` | 模型名称，如"ChatGPT-4o" | `nil` |
-| `CONTINUE_COUNT` | 循环处理次数            | `5`   |
+| `CONTINUE_COUNT` | 循环处理次数            | `20`  |
 | `AGENT_CONTINUE_MODE` |是否启用多轮处理模式，yes开启| `no`  |
 | `AI_OPS_LANG` | 语言设置 (en/zh) | `en`  |
 

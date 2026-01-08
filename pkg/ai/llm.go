@@ -202,8 +202,12 @@ func (oc *OpenClient) Send() (string, error) {
 
 		// 检查是否是 openai APIError
 		if apiErr, ok := err.(*openai.APIError); ok {
+			param := ""
+			if apiErr.Param != nil {
+				param = *apiErr.Param
+			}
 			detailedErr = fmt.Errorf("AI请求失败 (模型: %s, 消息数: %d) - API错误[类型:%s, 消息:%s, 参数:%s, 错误码:%s]: %w",
-				oc.model, len(oc.ChatHistory), apiErr.Type, apiErr.Message, apiErr.Param, apiErr.Code, err)
+				oc.model, len(oc.ChatHistory), apiErr.Type, apiErr.Message, param, apiErr.Code, err)
 		} else if strings.Contains(errDetail, "EOF") {
 			// 针对 EOF 错误提供更友好的提示
 			detailedErr = fmt.Errorf("AI请求失败 (模型: %s, 消息数: %d) - 连接中断(EOF): 可能是网络问题、服务器关闭连接或请求超时。原始错误: %w",

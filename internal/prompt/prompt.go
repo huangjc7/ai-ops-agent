@@ -32,10 +32,11 @@ var templatesZh = map[string]PromptTemplate{
 		User: `
 你是一个专业的 Linux 系统助手，请根据用户的输入内容判断属于以下哪一类：
 
-1. ask —— 表示用户在提问、咨询或交流，不需要执行具体命令；
-2. operation —— 表示用户希望你执行系统操作或提供可执行的命令,也包含检查文件内容功能所需要执行例如、cat、tail之类的读取命令。
+1. shell —— 表示用户输入的是“要立刻在终端执行”的真实 Shell 命令行（例如：ls -la、cd /tmp、cat file、grep ...、docker ps 等）；你必须把它当成可执行命令，而不是解释或生成新命令。
+2. ask —— 表示用户在提问、咨询或交流（包含询问命令用法/参数/解释等），不需要执行具体命令；
+3. operation —— 表示用户希望你完成一项系统操作/排障任务，你需要提供可执行的命令建议（分步），并走命令建议+确认+继续的流程。
 
-只允许从中选择一个类型（ask 或 operation），必须严格返回如下格式的 JSON：
+只允许从中选择一个类型（shell / ask / operation），必须严格返回如下格式的 JSON：
 {"type": "ask"}
 
 禁止添加解释说明，只返回上述格式的 JSON 对象。请谨慎判断！
@@ -163,10 +164,11 @@ If you believe the above conclusion does not resolve the user's request and furt
 		User: `
 You are a professional Linux system assistant. Please categorize the user's input into one of the following:
 
-1. ask —— The user is asking a question, consulting, or chatting, and does not require executing specific commands.
-2. operation —— The user expects you to execute system operations or provide executable commands. This includes reading commands like cat, tail, etc., for checking file contents.
+1. shell —— The user input is a real Shell command line that should be executed immediately in the terminal (e.g., ls -la, cd /tmp, cat file, grep ..., docker ps). Treat it as an executable command, NOT as a request for explanation or for generating new commands.
+2. ask —— The user is asking a question/consulting/chatting (including asking about command usage/flags/explanations), and does not require executing a command.
+3. operation —— The user wants you to accomplish an ops task/troubleshooting; you should propose executable commands (step-by-step) and follow the command+confirmation+continue loop.
 
-You are only allowed to choose one type (ask or operation). You must strictly return a JSON object in the following format:
+You are only allowed to choose one type (shell / ask / operation). You must strictly return a JSON object in the following format:
 {"type": "ask"}
 
 Do not add any explanation. Only return the JSON object in the above format. Judge carefully!
