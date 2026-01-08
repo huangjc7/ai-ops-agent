@@ -33,7 +33,11 @@ var messages = map[string]map[string]string{
 		"SkipCmd":             "[yellow]已跳过该命令执行[-]\n",
 		"SummaryFailed":       "总结请求失败: ",
 		"MaxRoundReached":     "[debug]处理轮次达到最大",
-		"SummaryRequest":      "请你基于上述对话历史做一个总结，总结一下主体目标 + 目前操作进度和建议",
+		"SummaryRequest": "请你基于上述对话历史做一个“任务总结/记忆”，要求如下：\n" +
+			"1) 必须包含：主体目标、当前状态（是否解决/卡点）、已执行的关键动作（按时间列出3-10条，包含关键命令与关键输出结论）、关键证据（错误信息/指标/日志要点）、未解决原因假设（如仍未解决）、下一步建议（最多5条，按优先级）。\n" +
+			"2) 必须简洁，不要复述大量原始输出；只提炼关键点。\n" +
+			"3) 输出纯文本，不要使用 markdown。\n" +
+			"4) 这份总结将作为后续对话的唯一上下文记忆来源，请确保信息足够让后续继续排查。",
 		"GenNewCmd":           "请生产新的命令组来继续解决上述出现所有的问题",
 		"CleanHistory":        "清理会话完毕",
 		"ReGenerateCmd":       "请重新生成一组命令并且使用<result>标签对包裹",
@@ -106,7 +110,11 @@ Example:
 		"SkipCmd":             "[yellow]Command execution skipped[-]\n",
 		"SummaryFailed":       "Summary request failed: ",
 		"MaxRoundReached":     "[debug]Maximum processing rounds reached",
-		"SummaryRequest":      "Please summarize the conversation history, including the main goal, current progress, and suggestions.",
+		"SummaryRequest": "Please create a concise 'task summary/memory' based on the conversation history:\n" +
+			"1) Must include: main goal, current status (solved/stuck), key actions taken (3-10 items with key commands and key conclusions), key evidence (errors/metrics/log highlights), hypotheses if still unresolved, next steps (max 5, prioritized).\n" +
+			"2) Keep it concise; do NOT paste large raw outputs.\n" +
+			"3) Output plain text only (no markdown).\n" +
+			"4) This summary will be the only memory for subsequent turns; make it sufficient to continue troubleshooting.",
 		"GenNewCmd":           "Please generate a new set of commands to continue solving the issues mentioned above.",
 		"CleanHistory":        "Session cleared",
 		"ReGenerateCmd":       "Please regenerate the command set and wrap it with <result> tags.",

@@ -36,8 +36,6 @@ const (
 // REPL 交互式命令行
 type REPL struct {
 	err            error
-	classSvc       ai.Controller // 专门用于分类（临时对话上下文）
-	TmpSvc         ai.Controller // 临时使用
 	svc            ai.Controller // 主对话上下文，负责和用户持续交互
 	systemInjected bool          // 初始化一次标签
 	execer         *executor.ShellExecutor
@@ -53,10 +51,16 @@ type REPL struct {
 
 // New 构造函数
 func New() *REPL {
-	execer := executor.New(10 * time.Second)
+	// 命令执行超时时间：默认 0 表示不设超时（更贴近真实终端体验）
+	// 可通过环境变量 AGENT_SHELL_TIMEOUT 覆盖（示例：30s / 5m / 1h）
+	timeout := time.Duration(0)
+	if ts := strings.TrimSpace(env.Get("AGENT_SHELL_TIMEOUT", "0")); ts != "" && ts != "0" {
+		if d, err := time.ParseDuration(ts); err == nil {
+			timeout = d
+		}
+	}
+	execer := executor.New(timeout)
 	svc := ai.GetAIModel().TextGenTextModelClient
-	classSvc := ai.GetAIModel().TextGenTextModelClient
-	tmpSvc := ai.GetAIModel().TextGenTextModelClient
 
 	cwd, _ := os.Getwd()
 	if cwd == "" {
@@ -65,12 +69,10 @@ func New() *REPL {
 	home, _ := os.UserHomeDir()
 
 	r := &REPL{
-		svc:      svc,
-		classSvc: classSvc,
-		execer:   execer,
-		TmpSvc:   tmpSvc,
-		cwd:      cwd,
-		home:     home,
+		svc:    svc,
+		execer: execer,
+		cwd:    cwd,
+		home:   home,
 	}
 
 	historyFile := ""
@@ -270,18 +272,25 @@ func (r *REPL) PrintHelpInfo() {
 // handleTerminalInput 用于判断当前输入是“直接执行的命令”还是“交给 AI 处理的对话/任务”。
 // 返回 false 表示需要退出 REPL。
 func (r *REPL) handleTerminalInput(input string) bool {
+	// 显式“采集模式”：执行命令并把输出摘要写入主对话历史（默认命令执行不写入历史）
+	if cmd, ok := r.parseCaptureCommand(input); ok {
+		return r.execAndCaptureSummary(cmd)
+	}
+
 	// 快路径：明显像“要立即执行的命令”，就不走 AI 分类，直接执行。
 	if r.looksLikeImmediateShell(input) {
 		return r.execShellLine(input)
 	}
 
 	// 否则交给 AI 进行分类：shell / ask / operation。
-	replyAi, err := r.classSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Class).User, input)).Send()
+	classSvc := ai.GetAIModel().TextGenTextModelClient
+	defer classSvc.Close()
+
+	replyAi, err := classSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Class).User, input)).Send()
 	if err != nil {
 		fmt.Fprintf(r.rl.Stderr(), "\n[error] %s%s\n", i18n.T("ClassifyFailed"), err.Error())
 		return true
 	}
-	r.classSvc.Close()
 
 	var inputClass = prompt.InputClassResult
 	if r.err = json.Unmarshal([]byte(replyAi), &inputClass); r.err != nil {
@@ -309,6 +318,21 @@ func (r *REPL) handleTerminalInput(input string) bool {
 		r.Ask(input)
 		return true
 	}
+}
+
+// parseCaptureCommand 解析“采集模式”的命令。
+// 语法：?? <shell command>
+func (r *REPL) parseCaptureCommand(input string) (string, bool) {
+	s := strings.TrimSpace(input)
+	if !strings.HasPrefix(s, "??") {
+		return "", false
+	}
+	s = strings.TrimSpace(strings.TrimPrefix(s, "??"))
+	if s == "" {
+		fmt.Fprintln(r.rl.Stderr(), "用法：?? <shell 命令>  （会执行并把输出最后500行做摘要写入对话历史）")
+		return "", true
+	}
+	return s, true
 }
 
 func (r *REPL) terminalPrompt() string {
@@ -370,8 +394,6 @@ func (r *REPL) looksLikeImmediateShell(input string) bool {
 	return false
 }
 
-const shellSentinel = "__AIOPS_AGENT__"
-
 func (r *REPL) execShellLine(input string) bool {
 	s := strings.TrimSpace(input)
 	if s == "" {
@@ -423,28 +445,99 @@ func (r *REPL) execShellLine(input string) bool {
 		return true
 	}
 
-	// 用一层包装命令捕获执行后的 cwd，并尽量保留原始 exit code。
-	wrapped := fmt.Sprintf(`%s; __ec=$?; printf '\n%sEXIT=%%d\n%sCWD=%%s\n' "$__ec" "$(pwd)"; exit $__ec`, s, shellSentinel, shellSentinel)
-	result := r.execer.RunInDir(wrapped, r.cwd)
-
-	stdout, newCwd := stripShellSentinels(result.Stdout)
-	if newCwd != "" {
-		r.cwd = newCwd
+	// 普通命令走“流式输出”：边执行边输出，体验更像真实终端（apt/yum 等长命令不会“卡住不动”）。
+	//
+	// 同时为了保留“单行复合命令里包含 cd”也能更新 cwd 的能力：
+	// - 子进程在结束前把 pwd 写入临时文件
+	// - 父进程读取该文件更新 r.cwd
+	tmp, err := os.CreateTemp("", "aiops-cwd-*")
+	if err != nil {
+		fmt.Fprintln(r.rl.Stderr(), err.Error())
+		return true
 	}
+	tmpPath := tmp.Name()
+	_ = tmp.Close()
+	defer os.Remove(tmpPath)
 
-	if stdout != "" {
-		fmt.Fprint(r.rl.Stdout(), stdout)
-		// 贴近真实终端行为：若输出末尾没有换行，补一个换行。
-		if !strings.HasSuffix(stdout, "\n") {
-			fmt.Fprintln(r.rl.Stdout())
+	// 保留原始退出码
+	wrapped := s + `; __ec=$?; pwd > "$AIOPS_CWD_FILE"; exit $__ec`
+	_ = r.execer.RunStreamingTailInDirWithEnv(
+		wrapped,
+		r.cwd,
+		[]string{"AIOPS_CWD_FILE=" + tmpPath},
+		r.rl.Stdout(),
+		r.rl.Stderr(),
+		0,
+	)
+
+	if b, err := os.ReadFile(tmpPath); err == nil {
+		if newCwd := strings.TrimSpace(string(b)); newCwd != "" {
+			r.cwd = newCwd
 		}
 	}
-	if result.Stderr != "" {
-		fmt.Fprint(r.rl.Stderr(), result.Stderr)
-		if !strings.HasSuffix(result.Stderr, "\n") {
-			fmt.Fprintln(r.rl.Stderr())
+	return true
+}
+
+// execAndCaptureSummary 执行命令，并把“输出最后500行”的 AI 摘要写入主对话历史。
+// 该模式用于：你希望后续直接问“分析上面的输出”，而不需要复制粘贴。
+func (r *REPL) execAndCaptureSummary(cmdline string) bool {
+	// 交互命令仍走直通（但不做摘要采集；否则会把屏幕控制字符塞进上下文）
+	if r.isInteractiveCommandLine(cmdline) {
+		fmt.Fprintln(r.rl.Stderr(), "该命令属于交互/全屏程序，无法进行输出采集摘要。请改用普通命令或手动复制关键片段。")
+		_ = r.execInteractive(cmdline)
+		return true
+	}
+
+	tmp, err := os.CreateTemp("", "aiops-cwd-*")
+	if err != nil {
+		fmt.Fprintln(r.rl.Stderr(), err.Error())
+		return true
+	}
+	tmpPath := tmp.Name()
+	_ = tmp.Close()
+	defer os.Remove(tmpPath)
+
+	start := time.Now()
+
+	wrapped := cmdline + `; __ec=$?; pwd > "$AIOPS_CWD_FILE"; exit $__ec`
+	res := r.execer.RunStreamingTailInDirWithEnv(
+		wrapped,
+		r.cwd,
+		[]string{"AIOPS_CWD_FILE=" + tmpPath},
+		r.rl.Stdout(),
+		r.rl.Stderr(),
+		500,
+	)
+
+	if b, err := os.ReadFile(tmpPath); err == nil {
+		if newCwd := strings.TrimSpace(string(b)); newCwd != "" {
+			r.cwd = newCwd
 		}
 	}
+
+	// 只把“尾部输出”送去摘要（stdout/stderr 分开保留，避免混杂控制字符）
+	info := fmt.Sprintf(
+		"cmd: %s\ncwd: %s\nexit: %d\nduration: %s\n\n--- stdout(last 500 lines) ---\n%s\n\n--- stderr(last 500 lines) ---\n%s\n",
+		cmdline,
+		r.cwd,
+		res.ExitCode,
+		time.Since(start).String(),
+		res.Stdout,
+		res.Stderr,
+	)
+
+	tmpSvc := ai.GetAIModel().TextGenTextModelClient
+	defer tmpSvc.Close()
+
+	summary, err := tmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Summary).User, info)).Send()
+	if err != nil {
+		fmt.Fprintf(r.rl.Stderr(), "\n[error] 摘要生成失败：%s\n", err.Error())
+		return true
+	}
+
+	// 把摘要写入主对话历史（而不是写入原始输出，避免上下文爆炸）
+	r.svc.AddUserRoleSession(fmt.Sprintf("我执行了命令：%s\n（仅保留输出最后500行并生成摘要）\n摘要：%s", cmdline, summary))
+	fmt.Fprintln(r.rl.Stdout(), "\n[captured] 已将输出摘要写入对话历史，可直接继续提问分析。")
 	return true
 }
 
@@ -505,25 +598,6 @@ func (r *REPL) execInteractive(cmdline string) error {
 	// 全屏程序退出后，刷新一次，保证下一次 prompt 绘制干净。
 	r.rl.Refresh()
 	return nil
-}
-
-func stripShellSentinels(stdout string) (clean string, cwd string) {
-	lines := strings.Split(stdout, "\n")
-	out := make([]string, 0, len(lines))
-	for _, ln := range lines {
-		if strings.HasPrefix(ln, shellSentinel+"CWD=") {
-			cwd = strings.TrimPrefix(ln, shellSentinel+"CWD=")
-			continue
-		}
-		if strings.HasPrefix(ln, shellSentinel+"EXIT=") {
-			continue
-		}
-		out = append(out, ln)
-	}
-	clean = strings.Join(out, "\n")
-	// 去掉一个由于 Split 行尾空元素导致的尾随换行，避免输出多一行空行。
-	clean = strings.TrimSuffix(clean, "\n")
-	return clean, strings.TrimSpace(cwd)
 }
 
 func (r *REPL) changeDir(target string) error {
@@ -679,12 +753,14 @@ func (r *REPL) Operation(input string) {
 	}
 
 	// 提炼描述
-	cmdExecSummary, err := r.TmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Summary).User, fmtResult)).Send()
+	tmpSvc := ai.GetAIModel().TextGenTextModelClient
+	defer tmpSvc.Close()
+
+	cmdExecSummary, err := tmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Summary).User, fmtResult)).Send()
 	if err != nil {
 		fmt.Fprintf(r.rl.Stderr(), "[error] %s%s\n", i18n.T("SummaryFailed"), err.Error())
 		return
 	}
-	r.TmpSvc.Close()
 
 	// 清理包含命令列表的AI回复
 	r.svc.RemoveOldResultMessages()
@@ -701,13 +777,22 @@ func (r *REPL) Operation(input string) {
 		return
 	}
 
-	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "20")); r.repairCount > count-1 {
-		fmt.Fprintln(r.rl.Stdout(), colorYellow+i18n.T("MaxRoundReached")+colorReset)
+	if count, _ := strconv.Atoi(env.Get("CONTINUE_COUNT", "5")); r.repairCount > count-1 {
+		//fmt.Fprintln(r.rl.Stdout(), colorYellow+i18n.T("MaxRoundReached")+colorReset)
 
-		r.svc.AddUserRoleSession(i18n.T("SummaryRequest")).
+		// 达到最大轮次：先让 AI 基于当前历史输出一份“任务总结/记忆”，然后清空历史细节。
+		// 为了避免 AI “失忆”，我们会把总结作为唯一记忆写回主对话历史（同时保留最初 system prompt）。
+		var summaryBuilder strings.Builder
+		_ = r.svc.AddUserRoleSession(i18n.T("SummaryRequest")).
 			SendStream(func(token string) {
+				summaryBuilder.WriteString(token)
 				fmt.Fprint(r.rl.Stdout(), token)
 			})
+
+		summaryText := strings.TrimSpace(summaryBuilder.String())
+		if summaryText != "" {
+			r.pruneAllHistoryKeepSystemAndTaskMemory(summaryText)
+		}
 		return
 	}
 
@@ -723,6 +808,21 @@ func (r *REPL) Operation(input string) {
 	}
 
 	fmt.Fprintln(r.rl.Stdout())
+}
+
+// pruneAllHistoryKeepSystemAndTaskMemory 用“任务总结/记忆”替换掉全部历史细节：
+// - 清空历史
+// - 重新注入最初的 system prompt（InitPrompt）
+// - 写入一条“任务记忆”消息作为后续对话唯一上下文
+func (r *REPL) pruneAllHistoryKeepSystemAndTaskMemory(summaryText string) {
+	r.svc.Close()
+
+	// 保留最初 system prompt（如果后续 Ask/Operation 使用 AddSystemRoleSessionOne，会替换 system，但“任务记忆”仍会保留）
+	r.svc.AddSystemRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.InitPrompt).User))
+	r.systemInjected = true
+
+	// 任务记忆：作为后续继续排障/对话的唯一上下文来源
+	r.svc.AddUserRoleSession("【任务总结/记忆（系统自动写入，供后续对话参考，不需要回复这一条）】\n" + summaryText)
 }
 
 // confirmWithPrompt 带提示的 y/n 确认
