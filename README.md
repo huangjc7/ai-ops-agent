@@ -44,7 +44,7 @@
 ## Installation
 ```shell
 # Note: Choose the correct architecture version
-$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v3.0.1/ai-ops-agent_linux_amd64.tar.gz
+$ curl -o ./ai-ops-agent_linux_amd64.tar.gz https://github.com/huangjc7/ai-ops-agent/releases/download/v3.0.3/ai-ops-agent_linux_amd64.tar.gz
 $ tar xf ai-ops-agent_linux_amd64.tar.gz
 $ chmod +x ./ai-ops-agent
 $ export API_KEY="your_api_key"
