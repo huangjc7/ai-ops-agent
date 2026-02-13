@@ -44,6 +44,7 @@ type REPL struct {
 	repairCount int // 递归计数器
 
 	continueEnabled bool // 开关持续Ai推理模式
+	confirmEnabled  bool // 开关命令执行二次确认（默认关闭）
 
 	cwd  string // 当前工作目录（用于模拟终端）
 	home string // 用户 home（用于 ~ 展开）
@@ -102,6 +103,10 @@ func New() *REPL {
 		r.continueEnabled = true
 	}
 
+	if env.Get("AGENT_CONFIRM_MODE", "no") == "yes" {
+		r.confirmEnabled = true
+	}
+
 	return r
 }
 
@@ -114,10 +119,15 @@ func (r *REPL) Run() error {
 		modeStr = i18n.T("ModeEnabled")
 	}
 
+	confirmStr := i18n.T("ModeDisabled")
+	if r.confirmEnabled {
+		confirmStr = i18n.T("ModeEnabled")
+	}
+
 	// 打印欢迎信息（去掉 TUI 颜色标签）
 	welcomeMsg := i18n.T("WelcomeMessage")
 	welcomeMsg = stripTviewColors(welcomeMsg)
-	fmt.Printf(colorCyan+welcomeMsg+colorReset+"\n", modeStr)
+	fmt.Printf(colorCyan+welcomeMsg+colorReset+"\n", modeStr, confirmStr)
 	//fmt.Println(i18n.T("HelpTip"))
 	fmt.Println()
 
@@ -650,14 +660,13 @@ func (r *REPL) Operation(input string) {
 	var cmdJsonReply string
 	var err error
 
-	//r.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Operation).System, system.GetSystemInfo()))
-
 	if input == "" {
 		cmdJsonReply, err = r.svc.
 			AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Operation).System, system.GetSystemInfo())).
 			Send()
 	} else {
-		cmdJsonReply, err = r.svc.AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Operation).System, system.GetSystemInfo())).
+		cmdJsonReply, err = r.svc.
+			AddSystemRoleSessionOne(fmt.Sprintf(prompt.GetTemplate(prompt.Operation).System, system.GetSystemInfo())).
 			AddUserRoleSession(input).
 			Send()
 	}
@@ -702,25 +711,30 @@ func (r *REPL) Operation(input string) {
 			fmt.Fprintf(r.rl.Stdout(), "%s:%d %s:%s %s:%s\n", i18n.T("Step"), step+1, i18n.T("Cmd"), command.Cmd, i18n.T("Desc"), command.Desc)
 		}
 
-		// 去掉 tview 颜色标签并用 ANSI 颜色
-		checkMsg := stripTviewColors(i18n.T("CheckCmdList"))
+		// 确认模式开启时：整体确认命令清单
+		if r.confirmEnabled {
+			// 去掉 tview 颜色标签并用 ANSI 颜色
+			checkMsg := stripTviewColors(i18n.T("CheckCmdList"))
 
-		// 获取用户确认
-		confirmed := r.confirmWithPrompt(colorYellow + checkMsg + colorReset)
-		if !confirmed {
-			cancelMsg := stripTviewColors(i18n.T("CancelMsg"))
-			fmt.Fprintln(r.rl.Stdout(), colorGreen+cancelMsg+colorReset)
-			return
+			// 获取用户确认
+			confirmed := r.confirmWithPrompt(colorYellow + checkMsg + colorReset)
+			if !confirmed {
+				cancelMsg := stripTviewColors(i18n.T("CancelMsg"))
+				fmt.Fprintln(r.rl.Stdout(), colorGreen+cancelMsg+colorReset)
+				return
+			}
+
+			confirmMsg := stripTviewColors(i18n.T("ConfirmMsg"))
+			fmt.Fprintln(r.rl.Stdout(), colorGreen+confirmMsg+colorReset)
 		}
 
-		confirmMsg := stripTviewColors(i18n.T("ConfirmMsg"))
-		fmt.Fprintln(r.rl.Stdout(), colorGreen+confirmMsg+colorReset)
-
 		for i, command := range commands {
-			fmt.Fprintf(r.rl.Stdout(), colorBlue+"%d) %s"+colorReset+"\n", i+1, command.Desc)
+			// 先打印序号和描述（不换行，等执行状态追加在后面）
+			fmt.Fprintf(r.rl.Stdout(), colorBlue+"%d) %s"+colorReset, i+1, command.Desc)
 
-			// 检测高危命令
+			// 检测高危命令：无论确认模式开关，危险命令始终需要二次确认
 			if shell.IsDangerousCommandRegex(command.Cmd) {
+				fmt.Fprintln(r.rl.Stdout()) // 换行，给警告信息腾位置
 				// 先打印警告信息
 				dangerMsg := stripTviewColors(i18n.T("DangerousCmd"))
 				fmt.Fprintf(r.rl.Stdout(), colorRed+dangerMsg+colorReset+"\n", command.Cmd)
@@ -734,9 +748,20 @@ func (r *REPL) Operation(input string) {
 					fmt.Fprint(r.rl.Stdout(), colorYellow+skipMsg+colorReset)
 					continue
 				}
+			} else if r.confirmEnabled {
+				fmt.Fprintln(r.rl.Stdout()) // 换行，给确认提示腾位置
+				// 确认模式开启时：非危险命令也逐条确认
+				confirmPrompt := colorYellow + stripTviewColors(i18n.T("DefaultConfirmLabel")) + colorReset
+				confirmed := r.confirmWithPrompt(confirmPrompt)
+				if !confirmed {
+					skipMsg := stripTviewColors(i18n.T("SkipCmd"))
+					fmt.Fprint(r.rl.Stdout(), colorYellow+skipMsg+colorReset)
+					continue
+				}
 			}
 
-			// shell执行
+			// shell执行：在描述行末尾追加"已执行"状态
+			fmt.Fprintf(r.rl.Stdout(), " "+colorGreen+"%s"+colorReset+"\n", i18n.T("CmdExecuted"))
 			result := r.execer.RunInDir(command.Cmd, r.cwd)
 			if result.ExitCode == 0 {
 				fmtResult += fmt.Sprintf(i18n.T("ExecResult"), command.Cmd, result.Stdout)

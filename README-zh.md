@@ -20,12 +20,14 @@
 # 环境变量
 | 变量名          | 描述                | 默认值   |
 |------------|-------------------|-------|
-| `BASE_URL` | 模型调用API地址         | `nil` |
-| `API_KEY` | 调认证APIKEY         | `nil` |
-| `MODEL` | 模型名称，如"ChatGPT-4o" | `nil` |
-| `CONTINUE_COUNT` | 循环处理次数            | `20`  |
-| `AGENT_CONTINUE_MODE` |是否启用多轮处理模式，yes开启| `no`  |
-| `AI_OPS_LANG` | 语言设置 (en/zh) | `en`  |
+| `BASE_URL` | 模型调用 API 地址 | 必填 |
+| `API_KEY` | 认证 API KEY | 必填 |
+| `MODEL` | 模型名称，如 "qwen3-max" | 必填 |
+| `AGENT_CONTINUE_MODE` | 是否启用多轮处理模式（yes/no） | `yes` |
+| `AGENT_CONFIRM_MODE` | 命令执行二次确认开关（yes/no） | `no` |
+| `CONTINUE_COUNT` | 多轮处理最大循环轮次 | `5` |
+| `AGENT_SHELL_TIMEOUT` | Shell 命令执行超时时间（如 30s / 5m / 1h，0 表示不限时） | `0` |
+| `AI_OPS_LANG` | 语言设置（en/zh） | `en` |
 
 # 使用方式
 

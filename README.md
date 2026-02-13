@@ -30,12 +30,14 @@
 # Environment Variables
 | Variable Name | Description | Default Value |
 |------------|-------------------|---------------|
-| `BASE_URL` | Model API URL | `nil`         |
-| `API_KEY` | Authentication API KEY | `nil`         |
-| `MODEL` | Model name, e.g., "ChatGPT-4o" | `nil`         |
-| `CONTINUE_COUNT` | Max loop count for processing | `20`          |
-| `AGENT_CONTINUE_MODE` | Enable multi-turn processing mode (yes to enable) | `yes`         |
-| `AI_OPS_LANG` | Language setting (en/zh) | `en`          |
+| `BASE_URL` | Model API URL | Required |
+| `API_KEY` | Authentication API KEY | Required |
+| `MODEL` | Model name, e.g., "qwen3-max" | Required |
+| `AGENT_CONTINUE_MODE` | Enable multi-turn processing mode (yes/no) | `yes` |
+| `AGENT_CONFIRM_MODE` | Enable command execution confirmation (yes/no) | `no` |
+| `CONTINUE_COUNT` | Max loop count for multi-turn processing | `5` |
+| `AGENT_SHELL_TIMEOUT` | Shell command execution timeout (e.g., 30s / 5m / 1h, 0 = no timeout) | `0` |
+| `AI_OPS_LANG` | Language setting (en/zh) | `en` |
 
 # Usage
 

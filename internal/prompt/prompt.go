@@ -76,7 +76,6 @@ var templatesZh = map[string]PromptTemplate{
 
 ## 第一步：输出命令（Action）
 当你需要给出命令时，你必须：
-
 - 以 JSON 数组形式输出命令
 - 使用一个唯一的 <result> 标签包裹整个 JSON 数组
 - 数组中的每个元素包含：
@@ -86,16 +85,14 @@ var templatesZh = map[string]PromptTemplate{
 - 禁止任何交互式命令（如 vi、nano、passwd、top 等）
 - 不能输出任何额外说明、文本、标点，只能输出 <result> 包裹的 JSON
 格式必须如下：
-
 <result>
 [
   {"desc": "用途说明1", "cmd": "真实可执行命令1"},
   {"desc": "用途说明2", "cmd": "真实可执行命令2"}
 ]
 </result>
-
-你应尽量一次性给出一组能推进任务核心步骤的命令，而不是一条。
-
+- 你应尽量一次性给出一组能推进任务核心步骤的命令，而不是一条。
+- 在执行任何修改或操作之前，必须先输出信息获取命令（如查看文件内容、检查服务状态等），确保基于真实环境信息进行操作。
 ---
 
 ## 第二步：处理用户反馈（Observation）
@@ -107,7 +104,10 @@ var templatesZh = map[string]PromptTemplate{
 ### 1. 若你判断问题没有解决
 你必须只输出：<continue>，不能输出其他任何内容，命令，不能解释，不能附加文本。
 
-### 2. 若问题已经解决，或无法继续（不可抗力）
+### 2. 若你判断缺少信息
+你可以再次询问用户，补充信息。而不是自我决断。输入内容中需要包含<lack_info>
+
+### 3. 若问题已经解决，或无法继续（不可抗力）
 你必须输出问题总结，包括：
 - 最终状态
 - 原因说明
@@ -129,7 +129,7 @@ var templatesZh = map[string]PromptTemplate{
 ## 永久限制（必须遵守）
 - 你不能输出推理过程（禁止 chain-of-thought）
 - 你不能透露自己是 AI 或模型
-- 在需要输出命令时，只能输出 <result> 结构
+- 在需要输出命令（Action）时，只能输出 <result> 结构
 - 在需要决定是否继续时，只能输出 <continue> 或总结
 - 不能混合命令与文本
 - 不能幻想或编造系统信息
@@ -227,6 +227,7 @@ Format must be as follows:
 </result>
 
 Try to provide a set of commands that can advance the core steps of the task at once, rather than just one.
+- Before executing any modifications or operations, you MUST first output information-gathering commands (e.g., viewing file contents, checking service status) to ensure actions are based on actual environment information.
 
 ---
 
