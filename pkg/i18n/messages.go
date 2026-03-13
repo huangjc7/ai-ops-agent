@@ -79,6 +79,11 @@ var messages = map[string]map[string]string{
 		"HelpCmdHistory":      "显示对话历史",
 		"HelpCmdClear":        "清除对话历史",
 		"HelpCmdExit":         "退出程序",
+		"HelpCmdCapture":      "执行命令并将输出采集到对话历史（例：?? tail -100 /var/log/messages）",
+		"CapturedDirect":      "\n[captured] 已直接写入对话历史，可直接继续提问分析。",
+		"CapturedSummary":     "\n[captured] 已生成摘要写入对话历史，可直接继续提问分析。",
+		"CapturedDirectCtx":   "我执行了命令：%s\n\n%s",
+		"CapturedSummaryCtx":  "我执行了命令：%s\n（仅保留输出最后500行并生成摘要）\n摘要：%s",
 	},
 	"en": {
 		"CmdLong": `This command starts the main service and supports configuration via environment variables:
@@ -158,5 +163,10 @@ Example:
 		"HelpCmdHistory":      "Show conversation history",
 		"HelpCmdClear":        "Clear conversation history",
 		"HelpCmdExit":         "Exit the program",
+		"HelpCmdCapture":      "Run a command and capture output into chat history (e.g. ?? tail -100 /var/log/messages)",
+		"CapturedDirect":      "\n[captured] Written directly into chat history. You can continue asking questions.",
+		"CapturedSummary":     "\n[captured] Summary written into chat history. You can continue asking questions.",
+		"CapturedDirectCtx":   "I ran command: %s\n\n%s",
+		"CapturedSummaryCtx":  "I ran command: %s\n(kept last 500 lines and generated summary)\nSummary: %s",
 	},
 }

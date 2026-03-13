@@ -276,6 +276,7 @@ func (r *REPL) PrintHelpInfo() {
 	//fmt.Println("  /history       - " + i18n.T("HelpCmdHistory"))
 	fmt.Println("  /clear         - " + i18n.T("HelpCmdClear"))
 	fmt.Println("  /exit, /quit   - " + i18n.T("HelpCmdExit"))
+	fmt.Println("  ?? <cmd>       - " + i18n.T("HelpCmdCapture"))
 	fmt.Println(strings.Repeat("-", 40))
 }
 
@@ -536,18 +537,29 @@ func (r *REPL) execAndCaptureSummary(cmdline string) bool {
 		res.Stderr,
 	)
 
+	const directMaxLines = 200
+	const directMaxBytes = 50 * 1024
+
+	combined := res.Stdout + res.Stderr
+	lineCount := strings.Count(combined, "\n") + 1
+
+	if lineCount <= directMaxLines && len(combined) <= directMaxBytes {
+		r.svc.AddUserRoleSession(fmt.Sprintf(i18n.T("CapturedDirectCtx"), cmdline, info))
+		fmt.Fprintln(r.rl.Stdout(), i18n.T("CapturedDirect"))
+		return true
+	}
+
 	tmpSvc := ai.GetAIModel().TextGenTextModelClient
 	defer tmpSvc.Close()
 
 	summary, err := tmpSvc.AddUserRoleSession(fmt.Sprintf(prompt.GetTemplate(prompt.Summary).User, info)).Send()
 	if err != nil {
-		fmt.Fprintf(r.rl.Stderr(), "\n[error] 摘要生成失败：%s\n", err.Error())
+		fmt.Fprintf(r.rl.Stderr(), "\n[error] %s%s\n", i18n.T("SummaryFailed"), err.Error())
 		return true
 	}
 
-	// 把摘要写入主对话历史（而不是写入原始输出，避免上下文爆炸）
-	r.svc.AddUserRoleSession(fmt.Sprintf("我执行了命令：%s\n（仅保留输出最后500行并生成摘要）\n摘要：%s", cmdline, summary))
-	fmt.Fprintln(r.rl.Stdout(), "\n[captured] 已将输出摘要写入对话历史，可直接继续提问分析。")
+	r.svc.AddUserRoleSession(fmt.Sprintf(i18n.T("CapturedSummaryCtx"), cmdline, summary))
+	fmt.Fprintln(r.rl.Stdout(), i18n.T("CapturedSummary"))
 	return true
 }
 
