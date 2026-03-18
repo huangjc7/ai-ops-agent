@@ -702,13 +702,11 @@ func (r *REPL) Operation(input string) {
 		}
 	}
 
-	// 执行命令添加对话历史，方便Ai回溯
-	r.svc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, cmdJsonReply)
-
 	resultDatas := text.ExtractAllResults(cmdJsonReply)
 
 	var fmtResult string
 	var commands prompt.SuggestionList
+	hasExecuted := false
 
 	// 防止AI抽风 多给了<result>标签对
 	for _, resultData := range resultDatas {
@@ -725,14 +723,17 @@ func (r *REPL) Operation(input string) {
 
 		// 确认模式开启时：整体确认命令清单
 		if r.confirmEnabled {
-			// 去掉 tview 颜色标签并用 ANSI 颜色
 			checkMsg := stripTviewColors(i18n.T("CheckCmdList"))
 
-			// 获取用户确认
 			confirmed := r.confirmWithPrompt(colorYellow + checkMsg + colorReset)
 			if !confirmed {
 				cancelMsg := stripTviewColors(i18n.T("CancelMsg"))
 				fmt.Fprintln(r.rl.Stdout(), colorGreen+cancelMsg+colorReset)
+				// 整体取消：标注所有命令为跳过，写入历史后返回
+				for _, cmd := range commands {
+					fmtResult += fmt.Sprintf(i18n.T("ExecResultSkipped"), cmd.Cmd)
+				}
+				r.svc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, cmdJsonReply+"\n\n"+fmtResult)
 				return
 			}
 
@@ -740,47 +741,69 @@ func (r *REPL) Operation(input string) {
 			fmt.Fprintln(r.rl.Stdout(), colorGreen+confirmMsg+colorReset)
 		}
 
+		cancelled := false
 		for i, command := range commands {
-			// 先打印序号和描述（不换行，等执行状态追加在后面）
+			// 前序命令被取消，后续全部标注为跳过
+			if cancelled {
+				fmt.Fprintf(r.rl.Stdout(), colorBlue+"%d) %s"+colorReset, i+1, command.Desc)
+				fmt.Fprintf(r.rl.Stdout(), " "+colorYellow+"%s"+colorReset+"\n", i18n.T("CmdSkipped"))
+				fmtResult += fmt.Sprintf(i18n.T("ExecResultSkipped"), command.Cmd)
+				continue
+			}
+
 			fmt.Fprintf(r.rl.Stdout(), colorBlue+"%d) %s"+colorReset, i+1, command.Desc)
 
 			// 检测高危命令：无论确认模式开关，危险命令始终需要二次确认
 			if shell.IsDangerousCommandRegex(command.Cmd) {
-				fmt.Fprintln(r.rl.Stdout()) // 换行，给警告信息腾位置
-				// 先打印警告信息
+				fmt.Fprintln(r.rl.Stdout())
 				dangerMsg := stripTviewColors(i18n.T("DangerousCmd"))
 				fmt.Fprintf(r.rl.Stdout(), colorRed+dangerMsg+colorReset+"\n", command.Cmd)
-				// 确认提示符（不包含换行）
 				dangerPrompt := colorRed + stripTviewColors(i18n.T("DangerousCmdConfirm")) + colorReset
 
-				// 获取用户确认
 				confirmed := r.confirmWithPrompt(dangerPrompt)
 				if !confirmed {
-					skipMsg := stripTviewColors(i18n.T("SkipCmd"))
-					fmt.Fprint(r.rl.Stdout(), colorYellow+skipMsg+colorReset)
+					fmt.Fprintf(r.rl.Stdout(), colorYellow+"%s"+colorReset+"\n", i18n.T("CmdCancelled"))
+					fmtResult += fmt.Sprintf(i18n.T("ExecResultCancelled"), command.Cmd)
+					cancelled = true
 					continue
 				}
 			} else if r.confirmEnabled {
-				fmt.Fprintln(r.rl.Stdout()) // 换行，给确认提示腾位置
-				// 确认模式开启时：非危险命令也逐条确认
+				fmt.Fprintln(r.rl.Stdout())
 				confirmPrompt := colorYellow + stripTviewColors(i18n.T("DefaultConfirmLabel")) + colorReset
 				confirmed := r.confirmWithPrompt(confirmPrompt)
 				if !confirmed {
-					skipMsg := stripTviewColors(i18n.T("SkipCmd"))
-					fmt.Fprint(r.rl.Stdout(), colorYellow+skipMsg+colorReset)
+					fmt.Fprintf(r.rl.Stdout(), colorYellow+"%s"+colorReset+"\n", i18n.T("CmdCancelled"))
+					fmtResult += fmt.Sprintf(i18n.T("ExecResultCancelled"), command.Cmd)
+					cancelled = true
 					continue
 				}
 			}
 
-			// shell执行：在描述行末尾追加"已执行"状态
+			// shell执行
 			fmt.Fprintf(r.rl.Stdout(), " "+colorGreen+"%s"+colorReset+"\n", i18n.T("CmdExecuted"))
 			result := r.execer.RunInDir(command.Cmd, r.cwd)
-			if result.ExitCode == 0 {
-				fmtResult += fmt.Sprintf(i18n.T("ExecResult"), command.Cmd, result.Stdout)
-			} else {
-				fmtResult += fmt.Sprintf(i18n.T("ExecResult"), command.Cmd, result.Stderr)
+			hasExecuted = true
+			var output string
+			switch {
+			case result.Stdout != "" && result.Stderr != "":
+				output = result.Stdout + "\n" + result.Stderr
+			case result.Stdout != "":
+				output = result.Stdout
+			case result.Stderr != "":
+				output = result.Stderr
+			default:
+				output = "(no output)"
 			}
+			fmtResult += fmt.Sprintf(i18n.T("ExecResult"), command.Cmd, output)
 		}
+	}
+
+	// 延迟写入对话历史：带执行状态标注
+	r.svc.AddCustomRoleSession(openai.ChatMessageRoleAssistant, cmdJsonReply+"\n\n"+fmtResult)
+
+	// 没有任何命令被执行（全部逐条取消），跳过 AI 总结
+	if !hasExecuted {
+		return
 	}
 
 	// 截断以防止超出 AI 上下文限制

@@ -33,6 +33,10 @@ var messages = map[string]map[string]string{
 		"DangerousCmdConfirm": "是否确认执行？(y/n): ",
 		"SkipCmd":             "[yellow]已跳过该命令执行[-]\n",
 		"CmdExecuted":         "✔ 已执行",
+		"CmdCancelled":        "✘ 已取消",
+		"CmdSkipped":          "- 跳过（前序命令已取消）",
+		"ExecResultCancelled": "命令: %s [用户取消]\n\n",
+		"ExecResultSkipped":   "命令: %s [未执行 - 前序命令已取消]\n\n",
 		"SummaryFailed":       "总结请求失败: ",
 		"MaxRoundReached":     "[debug]处理轮次达到最大",
 		"SummaryRequest": "请你基于上述对话历史做一个“任务总结/记忆”，要求如下：\n" +
@@ -117,6 +121,10 @@ Example:
 		"DangerousCmdConfirm": "Confirm execution? (y/n): ",
 		"SkipCmd":             "[yellow]Command execution skipped[-]\n",
 		"CmdExecuted":         "✔ Executed",
+		"CmdCancelled":        "✘ Cancelled",
+		"CmdSkipped":          "- Skipped (previous command was cancelled)",
+		"ExecResultCancelled": "Command: %s [Cancelled by user]\n\n",
+		"ExecResultSkipped":   "Command: %s [Not executed - previous command was cancelled]\n\n",
 		"SummaryFailed":       "Summary request failed: ",
 		"MaxRoundReached":     "[debug]Maximum processing rounds reached",
 		"SummaryRequest": "Please create a concise 'task summary/memory' based on the conversation history:\n" +
